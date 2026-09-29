@@ -462,6 +462,12 @@ export function initLeadForm() {
         }
         return;
       }
+      if (res.status === 503) {
+        sending = false;
+        loading(false);
+        setStatus('error', '<strong>O envio está temporariamente indisponível.</strong> Suas respostas continuam aqui. Tente de novo em alguns minutos.');
+        return;
+      }
       if (!res.ok || !data.ok) throw new Error(`HTTP ${res.status}`);
 
       // Lead salvo no servidor. Só agora vai para a confirmação (onde o evento Lead dispara).

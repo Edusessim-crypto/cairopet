@@ -65,16 +65,32 @@ function toWebhookPayload(lead: Lead, meta: { ip?: string; userAgent?: string })
 }
 
 async function forwardToWebhook(payload: unknown) {
-  const res = await fetch(LEAD_WEBHOOK_URL!, {
+  const url = new URL(LEAD_WEBHOOK_URL!);
+  const res = await fetch(url, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
+      // text/plain evita preflight e é aceito pelo Google Apps Script
+      'Content-Type': url.hostname === 'script.google.com' ? 'text/plain;charset=utf-8' : 'application/json',
       ...(LEAD_WEBHOOK_TOKEN ? { Authorization: `Bearer ${LEAD_WEBHOOK_TOKEN}` } : {}),
     },
     body: JSON.stringify(payload),
-    signal: AbortSignal.timeout(8000),
+    redirect: 'follow',
+    signal: AbortSignal.timeout(15000),
   });
   if (!res.ok) throw new Error(`Webhook ${res.status}`);
+
+  // Destinos que respondem JSON (ex.: planilha Google) precisam confirmar {"ok": true}.
+  const text = await res.text();
+  let data: { ok?: boolean; error?: string } | null = null;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    data = null;
+  }
+  if (url.hostname === 'script.google.com' && data?.ok !== true) {
+    throw new Error(`Planilha não confirmou o lead: ${data?.error ?? text.slice(0, 120)}`);
+  }
+  if (data && data.ok === false) throw new Error(`Webhook recusou o lead: ${data.error ?? ''}`);
 }
 
 export const POST: APIRoute = async ({ request, clientAddress }) => {
