@@ -1,0 +1,113 @@
+---
+import Logo from './brand/Logo.astro';
+import { CONTACT, CTA, SITE } from '../lib/site';
+
+const year = new Date().getFullYear();
+---
+
+<footer class="ft" data-no-sticky>
+  <div class="wrap">
+    <div class="ft__top">
+      <div>
+        <Logo width={128} class="ft__logo" />
+        <p class="ft__pos">{SITE.positioning}.</p>
+      </div>
+      <ul class="ft__links">
+        <li><a href={CTA.target}>Verificar minha cidade</a></li>
+        <li><a href="/#como-funciona">Como funciona</a></li>
+        <li><a href="/#perguntas">Perguntas</a></li>
+        {
+          CONTACT.instagram && (
+            <li>
+              <a href={CONTACT.instagram} target="_blank" rel="noopener">
+                Instagram
+              </a>
+            </li>
+          )
+        }
+        {
+          CONTACT.whatsapp && (
+            <li>
+              <a href={CONTACT.whatsapp} target="_blank" rel="noopener" data-track="whatsapp" data-location="footer">
+                WhatsApp
+              </a>
+            </li>
+          )
+        }
+        {
+          CONTACT.email && (
+            <li>
+              <a href={`mailto:${CONTACT.email}`}>{CONTACT.email}</a>
+            </li>
+          )
+        }
+        <li><a href="/politica-de-privacidade/">Política de Privacidade</a></li>
+      </ul>
+    </div>
+    <p class="ft__legal">
+      © {year}
+      {CONTACT.legalName ?? 'CairoPet'}{CONTACT.cnpj && ` · CNPJ ${CONTACT.cnpj}`} · Uma agropecuária por cidade.
+    </p>
+  </div>
+</footer>
+
+<style>
+  .ft {
+    padding-block: 3rem calc(1.75rem + env(safe-area-inset-bottom));
+    background: var(--ink);
+    color: var(--white);
+    --focus: var(--white);
+  }
+
+  .ft__top {
+    display: grid;
+    gap: 2rem;
+  }
+
+  .ft :global(.ft__logo) {
+    width: 120px;
+    margin-bottom: 0.75rem;
+  }
+
+  .ft__pos {
+    color: rgb(255 255 255 / 0.7);
+    font-size: var(--t-small);
+  }
+
+  .ft__links {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.1rem 1.5rem;
+  }
+
+  .ft__links a {
+    display: inline-block;
+    padding-block: 0.45rem;
+    color: rgb(255 255 255 / 0.85);
+    font-size: var(--t-small);
+    text-decoration: none;
+  }
+
+  .ft__links a:hover {
+    color: var(--white);
+    text-decoration: underline;
+  }
+
+  .ft__legal {
+    margin-top: 2rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid rgb(255 255 255 / 0.15);
+    color: rgb(255 255 255 / 0.6);
+    font-size: 0.8125rem;
+  }
+
+  @media (min-width: 48rem) {
+    .ft__top {
+      grid-template-columns: 1fr 1.3fr;
+    }
+
+    .ft__links {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+</style>

@@ -1,0 +1,73 @@
+---
+import Cta from '../Cta.astro';
+import Stamp from '../Stamp.astro';
+---
+
+<section id="uma-por-cidade" class="sec city" aria-labelledby="city-title">
+  <div class="wrap city__grid">
+    <div class="city__stamp" data-in>
+      <Stamp size="min(78vw, 22rem)" />
+    </div>
+    <div class="city__copy">
+      <p class="kicker">Exclusividade</p>
+      <h2 id="city-title" class="h2" data-in>Uma agropecuária por cidade.</h2>
+      <p class="city__big" data-in>
+        Se a CairoPet trabalha com a sua loja, não usa o que aprende na sua cidade para trabalhar com o seu concorrente
+        direto.
+      </p>
+      <p class="lead" data-in>
+        Quando uma agropecuária fecha com a gente, a cidade fica indisponível para outras enquanto durar a exclusividade
+        combinada em contrato. Por isso a sua cidade é uma das primeiras coisas que a gente confere.
+      </p>
+      <div class="city__cta" data-in>
+        <Cta location="uma-por-cidade" />
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .city__grid {
+    display: grid;
+    gap: 2.5rem;
+    align-items: center;
+  }
+
+  .city__stamp {
+    justify-self: center;
+  }
+
+  .city__big {
+    max-width: 30ch;
+    margin: 1.25rem 0 1rem;
+    font-size: var(--t-h3);
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: -0.02em;
+  }
+
+  .city__copy .lead {
+    max-width: 48ch;
+  }
+
+  .city__cta {
+    margin-top: 2rem;
+  }
+
+  @media (max-width: 39.99rem) {
+    .city__cta :global(.btn) {
+      width: 100%;
+    }
+
+    .city__stamp :global(.stamp) {
+      --size: 12rem !important;
+    }
+  }
+
+  @media (min-width: 60rem) {
+    .city__grid {
+      grid-template-columns: 0.8fr 1fr;
+      gap: 5rem;
+    }
+  }
+</style>

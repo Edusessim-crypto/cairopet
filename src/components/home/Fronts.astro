@@ -1,0 +1,134 @@
+---
+import Photo from '../Photo.astro';
+import { FRONTS } from '../../data/content';
+import { PHOTOS } from '../../data/photos';
+---
+
+<section id="como-funciona" class="sec on-mist fronts" aria-labelledby="fronts-title">
+  <div class="wrap">
+    <div class="fronts__head">
+      <div>
+        <p class="kicker">O que a CairoPet faz</p>
+        <h2 id="fronts-title" class="h2" data-in>Quatro frentes. Um critério.</h2>
+        <p class="lead" data-in>
+          O formato muda de loja para loja. O critério não muda: <strong>marketing precisa ter função comercial.</strong>
+        </p>
+      </div>
+      <div class="fronts__photo" data-in>
+        <Photo photo={PHOTOS.conteudo} ratio="3 / 2" sizes="(min-width: 60rem) 34vw, 100vw" />
+      </div>
+    </div>
+
+    <ol class="fronts__list">
+      {
+        FRONTS.map((f, i) => (
+          <li class="front" data-in style={`--d:${i * 0.05}s`}>
+            <span class="front__n mono">{f.n}</span>
+            <h3 class="front__title">{f.title}</h3>
+            <p class="front__what">{f.what}</p>
+            <p class="front__for">
+              <span class="mono">Para quê</span>
+              {f.for}
+            </p>
+          </li>
+        ))
+      }
+    </ol>
+
+    <p class="fronts__foot" data-in>
+      Você acompanha os principais indicadores em relatórios — para ver o que está acontecendo, não só o que foi postado.
+    </p>
+  </div>
+</section>
+
+<style>
+  .fronts__head {
+    display: grid;
+    gap: 2rem;
+    align-items: end;
+  }
+
+  .fronts__head .lead {
+    max-width: 40ch;
+    margin-top: 1.25rem;
+  }
+
+  .fronts__head .lead strong {
+    color: var(--ink);
+  }
+
+  .fronts__list {
+    display: grid;
+    gap: 0.75rem;
+    margin-top: clamp(2.5rem, 5vw, 3.5rem);
+  }
+
+  .front {
+    display: grid;
+    gap: 0.5rem;
+    padding: 1.4rem 1.25rem;
+    border-radius: var(--r);
+    background: var(--white);
+  }
+
+  .front__n {
+    color: var(--ink-3);
+  }
+
+  .front__title {
+    font-size: var(--t-h3);
+    font-weight: 750;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+  }
+
+  .front__what {
+    color: var(--ink-2);
+    line-height: 1.5;
+  }
+
+  .front__for {
+    display: grid;
+    gap: 0.2rem;
+    margin-top: 0.5rem;
+    padding-top: 0.85rem;
+    border-top: 1px dashed var(--ink-3);
+    font-weight: 600;
+    line-height: 1.4;
+  }
+
+  .front__for .mono {
+    color: var(--ink-3);
+    font-size: 0.625rem;
+    text-transform: uppercase;
+  }
+
+  .fronts__foot {
+    max-width: 60ch;
+    margin-top: 1.75rem;
+    color: var(--ink-2);
+    font-size: var(--t-small);
+  }
+
+  @media (min-width: 40rem) {
+    .fronts__list {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 60rem) {
+    .fronts__head {
+      grid-template-columns: 1fr 1fr;
+      gap: 4rem;
+    }
+
+    .fronts__list {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .front {
+      grid-template-rows: auto auto 1fr auto;
+      padding: 1.5rem;
+    }
+  }
+</style>

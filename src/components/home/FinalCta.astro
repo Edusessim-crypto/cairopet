@@ -1,0 +1,133 @@
+---
+import Cta from '../Cta.astro';
+import { NEXT_STEPS } from '../../data/content';
+import { CTA } from '../../lib/site';
+---
+
+<section class="sec on-black final" aria-labelledby="final-title" data-no-sticky>
+  <div class="wrap">
+    <h2 id="final-title" class="final__title" data-in>
+      Sua concorrência não precisa ser melhor que você. <span>Só precisa aparecer mais.</span>
+    </h2>
+    <p class="lead final__lead" data-in>
+      Imagine lançar uma promoção e começar a receber mensagens de pessoas perguntando justamente por ela.
+    </p>
+
+    <div class="final__box" data-in>
+      <ol class="final__steps" aria-label="O que acontece depois que você preenche">
+        {
+          NEXT_STEPS.map((s) => (
+            <li>
+              <span class="mono">{s.n}</span>
+              <p>{s.text}</p>
+            </li>
+          ))
+        }
+      </ol>
+      <div class="final__act">
+        <Cta location="final" tone="light" />
+        <a class="textlink" href={CTA.target} data-cta="final-secundario">{CTA.secondary}</a>
+        <p class="final__risk">Preencher não compromete você com contratação. Uma agropecuária por cidade.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .final__title {
+    max-width: 22ch;
+    font-family: var(--font-display), sans-serif;
+    font-size: var(--t-h2);
+    font-weight: 400;
+    line-height: 1.06;
+    letter-spacing: -0.025em;
+    color: rgb(255 255 255 / 0.62);
+    text-wrap: balance;
+  }
+
+  .final__title span {
+    color: var(--white);
+  }
+
+  .final__lead {
+    max-width: 44ch;
+    margin-top: 1.25rem;
+  }
+
+  .final__box {
+    display: grid;
+    gap: 2rem;
+    margin-top: clamp(2.5rem, 5vw, 3.5rem);
+    padding-top: 2rem;
+    border-top: 1px solid var(--fg-rule);
+  }
+
+  .final__steps {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .final__steps li {
+    display: grid;
+    grid-template-columns: 2.25rem 1fr;
+    gap: 0.5rem;
+    align-items: baseline;
+  }
+
+  .final__steps .mono {
+    color: var(--fg-2);
+  }
+
+  .final__steps p {
+    font-weight: 560;
+    line-height: 1.45;
+  }
+
+  .final__act {
+    display: grid;
+    gap: 0.5rem;
+    justify-items: start;
+    align-content: start;
+  }
+
+  .final__act .textlink {
+    color: var(--white);
+  }
+
+  .final__risk {
+    margin-top: 0.5rem;
+    color: var(--fg-2);
+    font-size: var(--t-small);
+  }
+
+  @media (max-width: 39.99rem) {
+    .final__act :global(.btn) {
+      width: 100%;
+    }
+
+    .final__act {
+      justify-items: stretch;
+      text-align: center;
+    }
+
+    .final__act .textlink {
+      justify-content: center;
+    }
+  }
+
+  @media (min-width: 60rem) {
+    .final__box {
+      grid-template-columns: 1.2fr 1fr;
+      gap: 4rem;
+    }
+
+    .final__steps {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1.5rem;
+    }
+
+    .final__steps li {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

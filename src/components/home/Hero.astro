@@ -1,0 +1,130 @@
+---
+import Cta from '../Cta.astro';
+import Photo from '../Photo.astro';
+import Stamp from '../Stamp.astro';
+import { PHOTOS } from '../../data/photos';
+---
+
+<section class="hero" aria-labelledby="hero-title">
+  <div class="wrap hero__grid">
+    <div class="hero__copy">
+      <p class="kicker">CairoPet · Especialistas em Marketing para Agropecuárias</p>
+      <h1 id="hero-title" class="hero__title">
+        Marketing para sua agropecuária <mark>vender antes</mark> da concorrência.
+      </h1>
+      <p class="hero__sub">
+        Estratégia, conteúdo, tráfego e campanhas feitos só para agropecuárias.
+        <strong>Para encher o balcão, não o feed.</strong>
+      </p>
+      <div class="hero__actions">
+        <Cta location="hero" id="hero-cta" />
+        <a class="textlink" href="#como-funciona" data-cta="hero-como-funciona">Entender como funciona</a>
+      </div>
+      <p class="hero__micro mono">Uma agropecuária por cidade · Sem compromisso</p>
+    </div>
+
+    <div class="hero__visual">
+      <Photo photo={PHOTOS.hero} ratio="4 / 5" eager sizes="(min-width: 60rem) 36vw, 100vw" />
+      <Stamp size="clamp(6.5rem, 22vw, 9.5rem)" class="hero__stamp" />
+    </div>
+  </div>
+</section>
+
+<style>
+  .hero {
+    padding-block: clamp(1.5rem, 4vw, 3.5rem) clamp(3.5rem, 7vw, 6rem);
+  }
+
+  .hero__grid {
+    display: grid;
+    gap: 2.5rem;
+    align-items: center;
+  }
+
+  .hero__title {
+    max-width: 16ch;
+    font-family: var(--font-display), 'Arial Black', sans-serif;
+    font-size: var(--t-hero);
+    font-weight: 400;
+    line-height: 1.02;
+    letter-spacing: -0.03em;
+    text-wrap: balance;
+  }
+
+  .hero__title mark {
+    background: linear-gradient(transparent 58%, var(--mist) 58%, var(--mist) 94%, transparent 94%);
+    padding-inline: 0.04em;
+  }
+
+  .hero__sub {
+    max-width: 36ch;
+    margin-top: 1.5rem;
+    color: var(--ink-2);
+    font-size: var(--t-lead);
+    line-height: 1.5;
+  }
+
+  .hero__sub strong {
+    color: var(--ink);
+    font-weight: 700;
+  }
+
+  .hero__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1.5rem;
+    margin-top: 2rem;
+  }
+
+  .hero__micro {
+    margin-top: 1rem;
+    color: var(--ink-2);
+  }
+
+  .hero__visual {
+    position: relative;
+  }
+
+  .hero__visual :global(.hero__stamp) {
+    position: absolute;
+    top: -1.25rem;
+    right: 0.25rem;
+    background: var(--white);
+    border-radius: 50%;
+    transform: rotate(-10deg);
+    box-shadow: 0 0 0 6px var(--white);
+  }
+
+  @media (max-width: 39.99rem) {
+    .hero__actions :global(.btn) {
+      width: 100%;
+    }
+
+    .hero__actions .textlink {
+      margin-inline: auto;
+    }
+
+    .hero__micro {
+      text-align: center;
+    }
+
+    .hero__visual {
+      margin-inline: calc(var(--pad) * -0.5);
+    }
+  }
+
+  @media (min-width: 60rem) {
+    .hero__grid {
+      grid-template-columns: 1.35fr 1fr;
+      gap: 4rem;
+    }
+
+    .hero__visual :global(.hero__stamp) {
+      top: auto;
+      right: auto;
+      bottom: 3.5rem;
+      left: -3.5rem;
+    }
+  }
+</style>

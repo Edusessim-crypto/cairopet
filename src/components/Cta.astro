@@ -1,0 +1,23 @@
+---
+import { CTA } from '../lib/site';
+
+interface Props {
+  location: string;
+  label?: string;
+  href?: string;
+  tone?: 'dark' | 'light';
+  block?: boolean;
+  id?: string;
+  class?: string;
+}
+
+const { location, label = CTA.primary, href = CTA.target, tone = 'dark', block = false, id, class: className } =
+  Astro.props;
+---
+
+<a href={href} id={id} data-cta={location} class:list={['btn', { 'btn--light': tone === 'light', 'btn--block': block }, className]}>
+  <span>{label}</span>
+  <span class="btn__arrow" aria-hidden="true">
+    <svg viewBox="0 0 16 16" fill="none"><path d="M2.5 8h10M8.5 3.5 13 8l-4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+  </span>
+</a>

@@ -1,0 +1,75 @@
+---
+/**
+ * Carimbo "Uma agropecuária por cidade": texto circular em Space Mono ao redor
+ * do símbolo oficial (arquivo original, sem redesenho).
+ */
+import Symbol from './brand/Symbol.astro';
+
+interface Props {
+  size?: string;
+  tone?: 'dark' | 'light';
+  class?: string;
+}
+
+const { size = '9rem', tone = 'dark', class: className } = Astro.props;
+const id = `stamp-${Math.random().toString(36).slice(2, 8)}`;
+---
+
+<div class:list={['stamp', `stamp--${tone}`, className]} style={`--size:${size}`} aria-hidden="true">
+  <svg viewBox="0 0 200 200">
+    <defs>
+      <path id={id} d="M100,100 m-78,0 a78,78 0 1,1 156,0 a78,78 0 1,1 -156,0"></path>
+    </defs>
+    <circle cx="100" cy="100" r="97" class="stamp__ring"></circle>
+    <circle cx="100" cy="100" r="62" class="stamp__ring stamp__ring--in"></circle>
+    <text class="stamp__text">
+      <textPath href={`#${id}`} textLength="486" lengthAdjust="spacing">UMA AGROPECUÁRIA POR CIDADE ✦ UMA AGROPECUÁRIA POR CIDADE ✦</textPath>
+    </text>
+  </svg>
+  <Symbol variant={tone === 'dark' ? 'black' : 'white'} width={160} class="stamp__symbol" />
+</div>
+
+<style>
+  .stamp {
+    position: relative;
+    width: var(--size);
+    aspect-ratio: 1;
+    color: var(--ink);
+  }
+
+  .stamp--light {
+    color: var(--white);
+  }
+
+  .stamp svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  .stamp__ring {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+  }
+
+  .stamp__ring--in {
+    stroke-width: 1;
+  }
+
+  .stamp__text {
+    fill: currentColor;
+    font-family: var(--font-mono), monospace;
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+
+  .stamp :global(.stamp__symbol) {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44%;
+    height: auto;
+    transform: translate(-50%, -52%);
+  }
+</style>

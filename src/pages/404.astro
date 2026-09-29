@@ -1,0 +1,26 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Header from '../components/Header.astro';
+import Cta from '../components/Cta.astro';
+---
+
+<BaseLayout title="Página não encontrada | CairoPet" noindex>
+  <Header variant="minimal" />
+  <main class="nf" id="conteudo">
+    <div class="wrap">
+      <p class="kicker">Erro 404</p>
+      <h1 class="h2">Essa página não existe.</h1>
+      <p class="lead">Mas a sua cidade ainda pode estar livre.</p>
+      <Cta location="404" />
+    </div>
+  </main>
+</BaseLayout>
+
+<style>
+  .nf {
+    padding-block: clamp(4rem, 10vw, 8rem);
+  }
+  .nf .lead {
+    margin: 1rem 0 2rem;
+  }
+</style>

@@ -1,0 +1,187 @@
+---
+/**
+ * [REVISAR COM JURÍDICO] Modelo de política alinhado à LGPD (Lei 13.709/2018).
+ * Campos entre colchetes aparecem enquanto as variáveis de ambiente
+ * PUBLIC_COMPANY_LEGAL_NAME, PUBLIC_COMPANY_CNPJ e PUBLIC_CONTACT_EMAIL não forem definidas.
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import { CONTACT } from '../lib/site';
+
+const legalName = CONTACT.legalName ?? '[RAZÃO SOCIAL]';
+const cnpj = CONTACT.cnpj ?? '[CNPJ]';
+const email = CONTACT.email ?? '[E-MAIL PARA ASSUNTOS DE PRIVACIDADE]';
+const updated = '28/09/2026';
+const missing = (v: string) => v.startsWith('[');
+---
+
+<BaseLayout
+  title="Política de Privacidade | CairoPet"
+  description="Como a CairoPet coleta, usa e protege os dados enviados pelo site, conforme a LGPD."
+>
+  <Header variant="minimal" />
+  <main id="conteudo" class="legal">
+    <div class="wrap legal__wrap">
+      <p class="kicker">Atualizado em {updated}</p>
+      <h1 class="h2 legal__title">Política de Privacidade</h1>
+
+      <div class="legal__body">
+        <p class="lead legal__intro">
+          Esta política explica quais dados a CairoPet coleta pelo site, para que eles são usados e quais são os seus direitos,
+          de acordo com a Lei Geral de Proteção de Dados (Lei nº 13.709/2018 — LGPD).
+        </p>
+
+        <h2>1. Quem é responsável pelos seus dados</h2>
+        <p>
+          O controlador dos dados é <mark class:list={{ ph: missing(legalName) }}>{legalName}</mark>, inscrita no CNPJ
+          <mark class:list={{ ph: missing(cnpj) }}>{cnpj}</mark>, que atua sob a marca CairoPet. Para qualquer assunto
+          relacionado a privacidade, fale com a gente pelo e-mail
+          <mark class:list={{ ph: missing(email) }}>{email}</mark>.
+        </p>
+
+        <h2>2. Quais dados coletamos</h2>
+        <p><strong>Dados que você informa no formulário:</strong></p>
+        <ul>
+          <li>nome e WhatsApp;</li>
+          <li>nome da agropecuária, cidade, estado e Instagram da loja;</li>
+          <li>
+            respostas sobre tipo e tamanho da loja, faturamento e investimento aproximados, marketing atual, dificuldades, objetivos, momento e quem decide.
+          </li>
+        </ul>
+        <p><strong>Dados coletados automaticamente durante a navegação:</strong></p>
+        <ul>
+          <li>endereço IP, tipo de navegador e dispositivo;</li>
+          <li>página de entrada, página de origem e parâmetros de campanha (como utm_source e utm_campaign);</li>
+          <li>
+            identificadores de cookies de medição, quando ativos — como os do Meta Pixel (Meta Platforms) e do Google
+            Analytics (Google).
+          </li>
+        </ul>
+
+        <h2>3. Para que usamos os dados</h2>
+        <ul>
+          <li>verificar se a sua cidade está disponível para atendimento;</li>
+          <li>analisar a sua agropecuária e preparar uma proposta de plano;</li>
+          <li>entrar em contato com você sobre a sua solicitação;</li>
+          <li>medir o desempenho do site e das campanhas de divulgação da própria CairoPet.</li>
+        </ul>
+        <p>Não vendemos seus dados. Não compartilhamos as informações da sua loja com outras agropecuárias.</p>
+
+        <h2>4. Bases legais</h2>
+        <p>
+          Tratamos os dados com base no seu consentimento, dado ao marcar a caixa do formulário (art. 7º, I, da LGPD), e
+          para a execução de procedimentos preliminares relacionados a um possível contrato, a seu pedido (art. 7º, V). Os
+          dados de medição de navegação são tratados com base no legítimo interesse da CairoPet em entender o desempenho do
+          site e das campanhas (art. 7º, IX), respeitados os seus direitos.
+        </p>
+
+        <h2>5. Com quem os dados podem ser compartilhados</h2>
+        <p>
+          Apenas com fornecedores necessários para operar o site e o atendimento — como hospedagem, ferramentas de gestão de
+          contatos e automação, e plataformas de medição e anúncios (Meta e Google) —, sempre limitado às finalidades acima.
+          Dados pessoais enviados à Meta para medição de conversões (como e-mail e telefone) seguem em formato de hash — um código irreversível — e não em texto aberto.
+        </p>
+
+        <h2>6. Por quanto tempo guardamos</h2>
+        <p>
+          Pelo tempo necessário para cumprir as finalidades desta política ou para atender obrigações legais. Você pode pedir
+          a exclusão a qualquer momento.
+        </p>
+
+        <h2>7. Seus direitos</h2>
+        <p>Conforme o art. 18 da LGPD, você pode, a qualquer momento:</p>
+        <ul>
+          <li>confirmar se tratamos seus dados e acessá-los;</li>
+          <li>corrigir dados incompletos, inexatos ou desatualizados;</li>
+          <li>pedir anonimização, bloqueio ou eliminação de dados desnecessários;</li>
+          <li>pedir a portabilidade dos dados;</li>
+          <li>saber com quem seus dados foram compartilhados;</li>
+          <li>revogar o consentimento e pedir a eliminação dos dados tratados com base nele.</li>
+        </ul>
+        <p>
+          Para exercer qualquer desses direitos, escreva para <mark class:list={{ ph: missing(email) }}>{email}</mark>.
+          Você também pode apresentar reclamação à Autoridade Nacional de Proteção de Dados (ANPD).
+        </p>
+
+        <h2>8. Cookies</h2>
+        <p>
+          O site pode usar cookies de medição (Meta Pixel e Google Analytics) para entender como as pessoas chegam até aqui
+          e quais campanhas funcionam. Você pode bloquear ou apagar cookies nas configurações do seu navegador; o site
+          continua funcionando.
+        </p>
+
+        <h2>9. Segurança</h2>
+        <p>
+          Adotamos medidas técnicas e administrativas razoáveis para proteger os dados, como conexão criptografada (HTTPS)
+          e acesso restrito às informações recebidas.
+        </p>
+
+        <h2>10. Alterações</h2>
+        <p>Esta política pode ser atualizada. A data da última versão fica sempre no topo desta página.</p>
+      </div>
+
+      <a class="textlink legal__back" href="/">Voltar para o site</a>
+    </div>
+  </main>
+  <Footer />
+</BaseLayout>
+
+<style>
+  .legal {
+    padding-block: clamp(3rem, 8vw, 6rem);
+  }
+
+  .legal__wrap {
+    max-width: calc(46rem + var(--gutter) * 2);
+  }
+
+  .legal__title {
+    font-size: clamp(2rem, 1.4rem + 2.2vw, 3rem);
+  }
+
+  .legal__body {
+    margin-top: clamp(2rem, 5vw, 3.5rem);
+    font-size: 1.0625rem;
+    line-height: 1.65;
+  }
+
+  .legal__body > * + * {
+    margin-top: 1rem;
+  }
+
+  .legal__body h2 {
+    margin-top: 2.75rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--rule);
+    font-size: 1.375rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+  }
+
+  .legal__body ul {
+    display: grid;
+    gap: 0.5rem;
+    padding-left: 1.25rem;
+    list-style: disc;
+  }
+
+  .legal__body mark {
+    background: none;
+    color: inherit;
+    font-weight: 650;
+  }
+
+  .legal__body mark.ph {
+    background: var(--ink);
+    color: var(--white);
+    padding: 0 0.3em;
+    font-family: var(--font-mono), monospace;
+    font-size: 0.875em;
+  }
+
+  .legal__back {
+    margin-top: 3rem;
+  }
+</style>

@@ -1,0 +1,31 @@
+---
+/**
+ * Wordmark oficial CairoPet — arquivo original, apenas recortado.
+ * Nunca recriar com fonte/texto.
+ */
+import { Image } from 'astro:assets';
+import white from '../../assets/brand/cairopet-wordmark-branco.png';
+import black from '../../assets/brand/cairopet-wordmark-preto.png';
+
+interface Props {
+  variant?: 'white' | 'black';
+  width: number;
+  class?: string;
+  loading?: 'eager' | 'lazy';
+  alt?: string;
+}
+
+const { variant = 'white', width, class: className, loading = 'lazy', alt = 'CairoPet' } = Astro.props;
+const src = variant === 'white' ? white : black;
+---
+
+<Image
+  src={src}
+  alt={alt}
+  width={width}
+  densities={[1, 2]}
+  format="webp"
+  loading={loading}
+  decoding="async"
+  class:list={['logo', className]}
+/>

@@ -1,0 +1,127 @@
+---
+import { QUESTIONS } from '../../data/content';
+
+const half = Math.ceil(QUESTIONS.length / 2);
+const cols = [QUESTIONS.slice(0, half), QUESTIONS.slice(half)];
+---
+
+<section id="perguntas" class="sec on-mist qs" aria-labelledby="qs-title">
+  <div class="wrap">
+    <p class="kicker">Perguntas</p>
+    <h2 id="qs-title" class="h2 qs__title" data-in>O que todo dono de loja pergunta antes.</h2>
+    <div class="qs__cols">
+      {
+        cols.map((col) => (
+          <div class="qs__col">
+            {col.map((item) => (
+              <details class="qs__item" name="perguntas">
+                <summary>
+                  <span>{item.q}</span>
+                  <span class="qs__icon" aria-hidden="true" />
+                </summary>
+                <p>{item.a}</p>
+              </details>
+            ))}
+          </div>
+        ))
+      }
+    </div>
+  </div>
+</section>
+
+<style>
+  .qs__title {
+    max-width: 22ch;
+  }
+
+  .qs__cols {
+    display: grid;
+    gap: 0.625rem;
+    margin-top: clamp(2rem, 4vw, 3rem);
+    align-items: start;
+  }
+
+  .qs__col {
+    display: grid;
+    gap: 0.625rem;
+  }
+
+  .qs__item {
+    border-radius: var(--r-sm);
+    background: var(--white);
+  }
+
+  .qs__item summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    min-height: 3.75rem;
+    padding: 0.9rem 1.1rem;
+    cursor: pointer;
+    list-style: none;
+    font-weight: 650;
+    line-height: 1.35;
+  }
+
+  .qs__item summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .qs__item summary:focus-visible {
+    outline-offset: -3px;
+    border-radius: var(--r-sm);
+  }
+
+  .qs__icon {
+    position: relative;
+    flex: none;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 5px;
+    background: var(--mist);
+  }
+
+  .qs__icon::before,
+  .qs__icon::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 10px;
+    height: 2px;
+    background: var(--ink);
+    transform: translate(-50%, -50%);
+    transition: transform 0.2s var(--ease);
+  }
+
+  .qs__icon::after {
+    transform: translate(-50%, -50%) rotate(90deg);
+  }
+
+  .qs__item[open] .qs__icon {
+    background: var(--ink);
+  }
+
+  .qs__item[open] .qs__icon::before,
+  .qs__item[open] .qs__icon::after {
+    background: var(--white);
+  }
+
+  .qs__item[open] .qs__icon::after {
+    transform: translate(-50%, -50%);
+  }
+
+  .qs__item p {
+    padding: 0 1.1rem 1.1rem;
+    color: var(--ink-2);
+    line-height: 1.55;
+  }
+
+  @media (min-width: 60rem) {
+    .qs__cols {
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+  }
+</style>

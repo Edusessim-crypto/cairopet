@@ -1,0 +1,32 @@
+---
+/**
+ * Símbolo oficial "C" CairoPet.
+ * - sticker: arquivo original (preenchimento branco + contorno preto)
+ * - white / black: preenchimento chapado extraído do arquivo original
+ *   (mesma forma do painel SÍMBOLO do brand board)
+ */
+import { Image } from 'astro:assets';
+import sticker from '../../assets/brand/cairopet-simbolo-sticker.png';
+import white from '../../assets/brand/cairopet-simbolo-branco.png';
+import black from '../../assets/brand/cairopet-simbolo-preto.png';
+
+interface Props {
+  variant?: 'sticker' | 'white' | 'black';
+  width: number;
+  widths?: number[];
+  sizes?: string;
+  class?: string;
+  alt?: string;
+}
+
+const { variant = 'black', width, widths, sizes, class: className, alt = '' } = Astro.props;
+const src = { sticker, white, black }[variant];
+---
+
+{
+  widths ? (
+    <Image src={src} alt={alt} width={width} widths={widths} sizes={sizes} format="webp" loading="lazy" decoding="async" class={className} />
+  ) : (
+    <Image src={src} alt={alt} width={width} densities={[1, 2]} format="webp" loading="lazy" decoding="async" class={className} />
+  )
+}

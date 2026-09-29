@@ -1,0 +1,278 @@
+---
+import { Image } from 'astro:assets';
+import Logo from '../brand/Logo.astro';
+import { AGROUNIAO, TESTIMONIALS } from '../../data/cases';
+
+const fmt = (v: number, d = 0) => v.toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d });
+---
+
+<section id="resultado" class="sec on-black proof" aria-labelledby="proof-title">
+  <div class="wrap proof__grid">
+    <div class="proof__copy">
+      <p class="kicker">Resultado real</p>
+      <h2 id="proof-title" class="h2" data-in>O que o relatório mostra. Sem arredondar para cima.</h2>
+      <p class="lead" data-in>
+        Um mês de campanha da {AGROUNIAO.name} no Meta. Os números estão no {AGROUNIAO.source}, do jeito que aparecem
+        lá.
+      </p>
+    </div>
+
+    <div class="proof__receipt" data-in style="--d:0.1s">
+      <article class="rc" aria-label={`Resumo da campanha ${AGROUNIAO.name}`}>
+        <header class="rc__head">
+          <Logo variant="black" width={92} class="rc__logo" alt="CairoPet" />
+          <p class="mono">Resumo da campanha</p>
+        </header>
+        <dl class="rc__meta">
+          <div><dt>Cliente</dt><dd>{AGROUNIAO.name}</dd></div>
+          <div><dt>Plataforma</dt><dd>{AGROUNIAO.platform}</dd></div>
+          <div>
+            <dt>Período</dt>
+            <dd>
+              <time datetime={AGROUNIAO.periodStartIso}>{AGROUNIAO.periodStart}</time> –
+              <time datetime={AGROUNIAO.periodEndIso}>{AGROUNIAO.periodEnd}</time>
+            </dd>
+          </div>
+        </dl>
+        <dl class="rc__metrics">
+          {
+            AGROUNIAO.metrics.map((m) => (
+              <div class="rc__row">
+                <dt>{m.label}</dt>
+                <dd>{`${m.prefix ?? ''}${fmt(m.value, m.decimals)}${m.suffix ?? ''}`}</dd>
+              </div>
+            ))
+          }
+        </dl>
+        <p class="rc__src mono">Fonte: {AGROUNIAO.source}</p>
+      </article>
+      {
+        AGROUNIAO.reportImage && (
+          <figure class="proof__report">
+            <Image src={AGROUNIAO.reportImage} alt={`Print do relatório da campanha ${AGROUNIAO.name}`} widths={[480, 800, 1200]} sizes="(min-width: 60rem) 40vw, 100vw" loading="lazy" />
+            <figcaption class="mono">Print do relatório · {AGROUNIAO.source}</figcaption>
+          </figure>
+        )
+      }
+    </div>
+
+    <ul class="proof__notes" data-in>
+      <li>Conversa não é venda, e alcance não é cliente. Aqui está só o que foi medido.</li>
+      <li>R$ 5,67 é o custo de mídia por conversa — não é o preço do serviço da CairoPet.</li>
+      <li>Cada loja, cidade e oferta tem um resultado diferente.</li>
+    </ul>
+  </div>
+
+  {
+    TESTIMONIALS.length > 0 && (
+      <div class="wrap proof__quotes">
+        {TESTIMONIALS.map((t) => (
+          <figure class="proof__quote">
+            <blockquote>
+              <p>“{t.quote}”</p>
+            </blockquote>
+            <figcaption>{[t.author, t.role, t.store, t.city].filter(Boolean).join(' · ')}</figcaption>
+          </figure>
+        ))}
+      </div>
+    )
+  }
+</section>
+
+<style>
+  .proof__grid {
+    display: grid;
+    gap: 3rem;
+    align-items: center;
+  }
+
+  .proof__copy .lead {
+    max-width: 42ch;
+    margin-top: 1.25rem;
+  }
+
+  .proof__notes {
+    display: grid;
+    gap: 0.6rem;
+    max-width: 44ch;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--fg-rule);
+    color: var(--fg-2);
+    font-size: var(--t-small);
+  }
+
+  .proof__notes li {
+    position: relative;
+    padding-left: 1.1rem;
+  }
+
+  .proof__notes li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.62em;
+    width: 0.4rem;
+    height: 0.4rem;
+    background: currentColor;
+  }
+
+  /* Cupom ------------------------------------------------------------------ */
+  .rc {
+    --z: 16px;
+    padding: 2.25rem clamp(1.25rem, 4vw, 2.25rem);
+    background: var(--white);
+    color: var(--ink);
+    -webkit-mask:
+      conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / var(--z) 51% repeat-x,
+      conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) top / var(--z) 51% repeat-x;
+    mask:
+      conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / var(--z) 51% repeat-x,
+      conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) top / var(--z) 51% repeat-x;
+    font-family: var(--font-mono), monospace;
+  }
+
+  .rc__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1.5px dashed var(--ink);
+  }
+
+  .rc :global(.rc__logo) {
+    width: 84px;
+  }
+
+  .rc__head .mono {
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+  }
+
+  .rc__meta {
+    display: grid;
+    gap: 0.35rem;
+    padding-block: 1rem;
+    border-bottom: 1.5px dashed var(--ink);
+    font-size: 0.8125rem;
+  }
+
+  .rc__meta div,
+  .rc__row {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+
+  .rc__meta dt,
+  .rc__row dt {
+    display: flex;
+    flex: 1;
+    align-items: baseline;
+    gap: 0.5rem;
+    color: var(--ink-2);
+  }
+
+  .rc__meta dt::after,
+  .rc__row dt::after {
+    content: '';
+    flex: 1;
+    min-width: 1rem;
+    border-bottom: 1.5px dotted var(--ink-3);
+  }
+
+  .rc__meta dd {
+    font-weight: 700;
+    text-align: right;
+  }
+
+  .rc__metrics {
+    display: grid;
+    gap: 0.9rem;
+    padding-block: 1.25rem;
+    border-bottom: 1.5px dashed var(--ink);
+  }
+
+  .rc__row dt {
+    font-size: 0.8125rem;
+    line-height: 1.3;
+  }
+
+  .rc__row dd {
+    font-family: var(--font-display), sans-serif;
+    font-size: clamp(1.375rem, 1.1rem + 1.2vw, 2rem);
+    line-height: 1;
+    letter-spacing: -0.02em;
+    white-space: nowrap;
+  }
+
+  .rc__src {
+    padding-top: 1rem;
+    color: var(--ink-2);
+    font-size: 0.6875rem;
+    text-align: center;
+  }
+
+  .proof__report {
+    margin-top: 1.5rem;
+  }
+
+  .proof__report img {
+    width: 100%;
+    border-radius: var(--r-sm);
+  }
+
+  .proof__report figcaption {
+    margin-top: 0.5rem;
+    color: var(--fg-2);
+  }
+
+  .proof__quotes {
+    display: grid;
+    gap: var(--gap);
+    margin-top: 3rem;
+  }
+
+  .proof__quote p {
+    font-size: var(--t-h3);
+    font-weight: 600;
+    line-height: 1.35;
+  }
+
+  .proof__quote figcaption {
+    margin-top: 0.75rem;
+    color: var(--fg-2);
+    font-size: var(--t-small);
+  }
+
+  @media (min-width: 60rem) {
+    .proof__grid {
+      grid-template-columns: 1fr 0.9fr;
+      grid-template-rows: auto 1fr;
+      column-gap: 5rem;
+      row-gap: 0;
+    }
+
+    .proof__copy {
+      grid-column: 1;
+      grid-row: 1;
+    }
+
+    .proof__notes {
+      grid-column: 1;
+      grid-row: 2;
+      align-self: start;
+      margin-top: 1.75rem;
+    }
+
+    .proof__receipt {
+      grid-column: 2;
+      grid-row: 1 / 3;
+      align-self: center;
+    }
+
+    .proof__receipt {
+      transform: rotate(1.2deg);
+    }
+  }
+</style>

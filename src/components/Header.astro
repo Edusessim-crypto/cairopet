@@ -1,0 +1,123 @@
+---
+import Logo from './brand/Logo.astro';
+import Cta from './Cta.astro';
+import { NAV } from '../lib/site';
+
+interface Props {
+  variant?: 'home' | 'minimal';
+}
+const { variant = 'home' } = Astro.props;
+---
+
+<header class:list={['hd', `hd--${variant}`]} data-header>
+  <div class="wrap hd__in">
+    <a href="/" class="hd__logo">
+      <Logo variant="black" width={108} loading="eager" alt="CairoPet — página inicial" />
+    </a>
+    {
+      variant === 'home' ? (
+        <>
+          <nav class="hd__nav" aria-label="Principal">
+            <ul>
+              {NAV.map((item) => (
+                <li>
+                  <a href={item.href}>{item.label}</a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+          <Cta location="header" class="hd__cta" />
+        </>
+      ) : (
+        <a class="hd__back" href="/">
+          Voltar ao site
+        </a>
+      )
+    }
+  </div>
+</header>
+
+<style>
+  .hd {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: rgb(255 255 255 / 0.94);
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.25s var(--ease);
+  }
+
+  @supports (backdrop-filter: blur(8px)) {
+    .hd {
+      background: rgb(255 255 255 / 0.82);
+      backdrop-filter: saturate(1.2) blur(12px);
+    }
+  }
+
+  .hd:global(.is-scrolled) {
+    border-bottom-color: var(--rule);
+  }
+
+  .hd__in {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    height: var(--header-h);
+  }
+
+  .hd__logo {
+    margin-right: auto;
+  }
+
+  .hd__logo :global(.logo) {
+    width: 100px;
+    height: auto;
+  }
+
+  .hd__nav {
+    display: none;
+  }
+
+  .hd__nav ul {
+    display: flex;
+    gap: 1.75rem;
+  }
+
+  .hd__nav a {
+    color: var(--ink-2);
+    font-size: var(--t-small);
+    font-weight: 550;
+    text-decoration: none;
+  }
+
+  .hd__nav a:hover {
+    color: var(--ink);
+  }
+
+  .hd :global(.hd__cta) {
+    display: none;
+    min-height: 2.75rem;
+    font-size: var(--t-small);
+  }
+
+  .hd :global(.hd__cta .btn__arrow) {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  .hd__back {
+    color: var(--ink-2);
+    font-size: var(--t-small);
+    font-weight: 550;
+  }
+
+  @media (min-width: 60rem) {
+    .hd__nav {
+      display: block;
+    }
+
+    .hd :global(.hd__cta) {
+      display: inline-flex;
+    }
+  }
+</style>

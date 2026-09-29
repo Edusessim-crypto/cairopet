@@ -1,0 +1,84 @@
+---
+/**
+ * Fotografia com legenda. Fotos temporárias (src/data/photos.ts) mostram
+ * "Imagem temporária" na legenda até serem trocadas por fotos reais.
+ */
+import { Picture } from 'astro:assets';
+import type { PhotoSlot } from '../data/photos';
+
+interface Props {
+  photo: PhotoSlot;
+  sizes: string;
+  ratio?: string;
+  eager?: boolean;
+  caption?: boolean;
+  class?: string;
+}
+
+const { photo, sizes, ratio = '4 / 5', eager = false, caption = true, class: className } = Astro.props;
+const widths = [360, 540, 720, 900, 1200, 1600].filter((w) => w < photo.src.width).concat(photo.src.width);
+---
+
+<figure class:list={['ph', className]}>
+  <div class="ph__frame" style={`aspect-ratio:${ratio}`}>
+    <Picture
+      src={photo.src}
+      alt={photo.alt}
+      formats={['avif', 'webp']}
+      widths={widths}
+      sizes={sizes}
+      loading={eager ? 'eager' : 'lazy'}
+      fetchpriority={eager ? 'high' : 'auto'}
+      decoding="async"
+      style={photo.focus ? `object-position:${photo.focus}` : undefined}
+    />
+  </div>
+  {
+    caption && photo.temporary && (
+      <figcaption class="ph__cap">
+        <span class="ph__tmp">Imagem temporária</span>
+        <span>{photo.brief}</span>
+      </figcaption>
+    )
+  }
+</figure>
+
+<style>
+  .ph__frame {
+    overflow: hidden;
+    border-radius: var(--r);
+    background: var(--mist);
+  }
+
+  .ph__frame :global(picture),
+  .ph__frame :global(img) {
+    width: 100%;
+    height: 100%;
+  }
+
+  .ph__frame :global(img) {
+    object-fit: cover;
+    filter: grayscale(1) contrast(1.05);
+  }
+
+  .ph__cap {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 0.6rem;
+    margin-top: 0.6rem;
+    color: var(--fg-2);
+    font-size: 0.8125rem;
+    line-height: 1.4;
+  }
+
+  .ph__tmp {
+    padding: 0.1rem 0.4rem;
+    border: 1px solid currentColor;
+    border-radius: 4px;
+    font-family: var(--font-mono), monospace;
+    font-size: 0.625rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+</style>

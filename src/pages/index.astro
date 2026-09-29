@@ -1,0 +1,59 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import StickyCta from '../components/StickyCta.astro';
+import Hero from '../components/home/Hero.astro';
+import Problem from '../components/home/Problem.astro';
+import WhySpecialist from '../components/home/WhySpecialist.astro';
+import Fronts from '../components/home/Fronts.astro';
+import Proof from '../components/home/Proof.astro';
+import OnePerCity from '../components/home/OnePerCity.astro';
+import Questions from '../components/home/Questions.astro';
+import FinalCta from '../components/home/FinalCta.astro';
+import { QUESTIONS } from '../data/content';
+import { CONTACT, SITE } from '../lib/site';
+
+const url = Astro.site!.href;
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    '@id': `${url}#organizacao`,
+    name: SITE.name,
+    url,
+    logo: new URL('/icon-512.png', url).href,
+    description: `${SITE.name} — ${SITE.positioning}.`,
+    knowsAbout: ['Marketing para agropecuárias', 'Tráfego pago local', 'Campanhas comerciais para varejo agro'],
+    areaServed: { '@type': 'Country', name: 'Brasil' },
+    ...(CONTACT.instagram ? { sameAs: [CONTACT.instagram] } : {}),
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: QUESTIONS.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })),
+  },
+];
+---
+
+<BaseLayout jsonLd={jsonLd}>
+  <a class="skip" href="#conteudo">Pular para o conteúdo</a>
+  <Header />
+  <main id="conteudo">
+    <Hero />
+    <Problem />
+    <WhySpecialist />
+    <Fronts />
+    <Proof />
+    <OnePerCity />
+    <Questions />
+    <FinalCta />
+  </main>
+  <Footer />
+  <StickyCta />
+</BaseLayout>
+
+<script>
+  import { initUi } from '../scripts/ui';
+  initUi();
+</script>
