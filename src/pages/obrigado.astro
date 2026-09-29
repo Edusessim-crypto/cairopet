@@ -1,36 +1,37 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import Header from '../components/Header.astro';
-import Stamp from '../components/Stamp.astro';
+import Logo from '../components/brand/Logo.astro';
 import { CALENDLY_URL } from '../lib/site';
 ---
 
 <BaseLayout title="Recebemos sua agropecuária | CairoPet" noindex>
-  <Header variant="minimal" />
-  <main class="ty" id="conteudo">
-    <div class="ty__in">
-      <Stamp size="6.5rem" />
-      <h1 class="h2 ty__title">Recebemos sua agropecuária<span data-ty-name></span>.</h1>
-      <p class="lead">
-        Agora a gente confere a disponibilidade da sua cidade e analisa as informações que você enviou.
+  <main class="ok" id="conteudo">
+    <header class="ok__top">
+      <a href="/" aria-label="CairoPet — página inicial"><Logo variant="black" width={88} loading="eager" alt="" /></a>
+    </header>
+
+    <div class="ok__body">
+      <p class="ok__tag">
+        <span class="ok__check" aria-hidden="true">
+          <svg viewBox="0 0 12 12"><path d="M2.5 6.3 5 8.7l4.5-5.2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </span>
+        CairoPet · Etapa concluída
+      </p>
+      <h1 class="ok__title">Recebemos sua agropecuária<span data-ty-name></span>.</h1>
+      <p class="ok__text">
+        Suas informações foram enviadas. Agora escolha o melhor horário para conversar com a CairoPet.
       </p>
 
-      <div class="ty__next">
-        <p class="kicker">Próximo passo</p>
-        <h2 class="h3">Agende o briefing com a CairoPet.</h2>
-        <p class="fg-2">
-          Uma conversa para entender a loja, a cidade e o que você quer melhorar. Escolha o horário que funciona para você.
-        </p>
-        <a class="btn ty__cal" href={CALENDLY_URL} target="_blank" rel="noopener" data-calendly data-cta="obrigado-calendly">
-          <span>Agendar meu briefing</span>
-          <span class="btn__arrow" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none"><path d="M2.5 8h10M8.5 3.5 13 8l-4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
-        </a>
-        <p class="ty__note">
-          Prefere não agendar agora? Sem problema: se houver compatibilidade, a gente entra em contato pelos dados que você
-          informou.
-        </p>
-      </div>
-      <a class="textlink" href="/">Voltar para o site</a>
+      <a class="ok__btn" href={CALENDLY_URL} data-calendly data-cta="obrigado-calendly">
+        <span>Agendar meu briefing</span>
+        <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2.5 8h10M8.5 3.5 13 8l-4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      </a>
+      <p class="ok__hint">Escolha o melhor dia e horário para você.</p>
+
+      <p class="ok__later">
+        Prefere agendar depois? Tudo bem: sua agropecuária já está com a gente. Se houver compatibilidade, entramos em
+        contato pelo WhatsApp que você informou.
+      </p>
     </div>
   </main>
 </BaseLayout>
@@ -63,7 +64,7 @@ import { CALENDLY_URL } from '../lib/site';
   const slot = document.querySelector('[data-ty-name]');
   if (first && slot) slot.textContent = `, ${first}`;
 
-  // Calendly com nome e UTMs pré-preenchidos.
+  // Calendly na mesma aba, com nome e UTMs pré-preenchidos.
   const cal = document.querySelector<HTMLAnchorElement>('[data-calendly]');
   if (cal) {
     const url = new URL(cal.href);
@@ -76,43 +77,115 @@ import { CALENDLY_URL } from '../lib/site';
 </script>
 
 <style>
-  .ty {
-    padding-block: clamp(2.5rem, 7vw, 5rem);
-  }
-  .ty__in {
-    max-width: calc(40rem + var(--pad) * 2);
+  .ok {
+    --side: clamp(1rem, 5.5vw, 1.5rem);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    min-height: 100dvh;
+    max-width: 34rem;
     margin-inline: auto;
-    padding-inline: var(--pad);
+    padding: env(safe-area-inset-top) var(--side) calc(1.5rem + env(safe-area-inset-bottom));
+  }
+
+  .ok__top {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 56px;
+  }
+
+  .ok__top :global(.logo) {
+    width: 84px;
+    height: auto;
+  }
+
+  .ok__body {
     display: grid;
-    gap: 1.25rem;
-    justify-items: start;
+    gap: 1rem;
+    padding-top: clamp(1.5rem, 8vh, 4rem);
   }
-  .ty__title {
-    margin-top: 0.5rem;
-  }
-  .ty__next {
-    display: grid;
-    gap: 0.75rem;
-    width: 100%;
-    margin-block: 1rem;
-    padding: clamp(1.25rem, 4vw, 2rem);
-    border-radius: var(--r);
-    background: var(--mist);
-  }
-  .ty__next .kicker {
-    margin: 0;
-  }
-  .ty__cal {
-    justify-self: start;
-    margin-top: 0.5rem;
-  }
-  .ty__note {
+
+  .ok__tag {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
     color: var(--ink-2);
-    font-size: var(--t-small);
+    font-family: var(--font-mono), monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
   }
-  @media (max-width: 39.99rem) {
-    .ty__cal {
-      justify-self: stretch;
-    }
+
+  .ok__check {
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--ink);
+    color: var(--white);
+  }
+
+  .ok__check svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  .ok__title {
+    font-family: var(--font-display), sans-serif;
+    font-size: clamp(1.75rem, 1.2rem + 2.6vw, 2.5rem);
+    font-weight: 400;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+
+  .ok__text {
+    color: var(--ink-2);
+    font-size: 1.0625rem;
+    line-height: 1.5;
+  }
+
+  .ok__btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.625rem;
+    min-height: 60px;
+    margin-top: 0.75rem;
+    padding: 0 1.25rem;
+    border-radius: 12px;
+    background: var(--ink);
+    color: var(--white);
+    font-size: 1.125rem;
+    font-weight: 700;
+    text-decoration: none;
+    touch-action: manipulation;
+  }
+
+  .ok__btn:active {
+    background: var(--graphite);
+  }
+
+  .ok__btn svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .ok__hint {
+    margin-top: -0.25rem;
+    color: var(--ink-2);
+    font-size: 0.9375rem;
+    text-align: center;
+  }
+
+  .ok__later {
+    margin-top: 1.5rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--rule);
+    color: var(--ink-3);
+    font-size: 0.875rem;
+    line-height: 1.5;
   }
 </style>

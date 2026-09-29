@@ -1,3 +1,14 @@
+/**
+ * Formulário CairoPet — comportamento mobile first.
+ *
+ * - Uma etapa por tela; cada avanço vira uma entrada no histórico, então o
+ *   "voltar" do navegador (ou o gesto do Android) volta uma pergunta, sem perder nada.
+ * - Rascunho salvo no aparelho a cada resposta e ao trocar de app/aba
+ *   (localStorage por 24h; sem ele, sessionStorage).
+ * - Teclado: não abre sozinho no celular; se já estiver aberto, segue para o
+ *   próximo campo de texto. Com o teclado aberto, campo e botão ficam visíveis.
+ * - O evento Lead só dispara em /obrigado/, depois do servidor confirmar.
+ */
 import {
   firstName,
   formatWhatsapp,
@@ -10,7 +21,8 @@ import {
 import { getAttribution } from './attribution';
 import { track } from './tracking';
 
-const DRAFT_KEY = 'cp_lead_draft_v2';
+const DRAFT_KEY = 'cp_lead_draft_v3';
+const DRAFT_TTL = 24 * 60 * 60 * 1000;
 const PENDING_KEY = 'cp_lead_pending';
 const NAME_KEY = 'cp_lead_nome';
 const SITUATIONS_KEY = 'cp_situacoes';
@@ -40,11 +52,12 @@ const STEP_FIELDS: Record<string, (keyof Lead)[]> = {
 
 const timeout = (ms: number) => ('timeout' in AbortSignal ? AbortSignal.timeout(ms) : undefined);
 
-function session(): Storage | null {
+function storage(kind: 'localStorage' | 'sessionStorage'): Storage | null {
   try {
-    sessionStorage.setItem('__t', '1');
-    sessionStorage.removeItem('__t');
-    return sessionStorage;
+    const s = window[kind];
+    s.setItem('__t', '1');
+    s.removeItem('__t');
+    return s;
   } catch {
     return null;
   }
@@ -53,31 +66,40 @@ function session(): Storage | null {
 const uuid = () =>
   crypto?.randomUUID ? crypto.randomUUID() : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
 
+const isTextField = (el: Element | null): el is HTMLInputElement | HTMLTextAreaElement =>
+  !!el && ((el instanceof HTMLInputElement && !['radio', 'checkbox', 'submit', 'button'].includes(el.type)) || el instanceof HTMLTextAreaElement);
+
 export function initLeadForm() {
   const found = document.querySelector<HTMLFormElement>('[data-lead-form]');
   if (!found) return;
   const form: HTMLFormElement = found;
-  const store = session();
+  const draftStore = storage('localStorage') ?? storage('sessionStorage');
+  const session = storage('sessionStorage');
+  const touch = matchMedia('(pointer: coarse)').matches;
 
   const steps = [...form.querySelectorAll<HTMLElement>('[data-step]')];
   const total = steps.length;
   const $ = <T extends Element>(sel: string) => form.querySelector<T>(sel)!;
+  const backButtons = [...form.querySelectorAll<HTMLButtonElement>('[data-back]')];
   const btnNext = $<HTMLButtonElement>('[data-next]');
-  const btnBack = $<HTMLButtonElement>('[data-back]');
   const btnSubmit = $<HTMLButtonElement>('[data-submit]');
   const submitLabel = $<HTMLElement>('[data-submit-label]');
   const status = $<HTMLElement>('[data-status]');
   const announce = $<HTMLElement>('[data-announce]');
   const bar = $<HTMLElement>('[data-bar]');
-  const whereN = $<HTMLElement>('[data-where-n]');
-  const whereLabel = $<HTMLElement>('[data-where-label]');
+  const countN = $<HTMLElement>('[data-count-n]');
+  const actions = $<HTMLElement>('.lf__actions');
+  const top = $<HTMLElement>('.lf__top');
 
   let index = 0;
   let started = false;
   let sending = false;
+  let finished = false;
   let lastPointer = 0;
+  // Teclado aberto no instante do toque em "Continuar" (antes do botão roubar o foco).
+  let typingAtTap = false;
 
-  /* Leitura --------------------------------------------------------------- */
+  /* Leitura ------------------------------------------------------------- */
   function raw(): Record<string, unknown> {
     const data = new FormData(form);
     const out: Record<string, unknown> = {};
@@ -88,9 +110,10 @@ export function initLeadForm() {
     return out;
   }
   const read = () => parseLead(raw());
-  const controls = (name: string) => [...form.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(`[name="${name}"]`)];
+  const controls = (name: string) =>
+    [...form.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(`[name="${name}"]`)];
 
-  /* Erros ----------------------------------------------------------------- */
+  /* Erros: sempre junto do campo -------------------------------------------- */
   function setError(name: string, message: string | null) {
     const el = form.querySelector<HTMLElement>(`[data-err="${name}"]`);
     if (el) {
@@ -107,10 +130,15 @@ export function initLeadForm() {
   function showErrors(errors: LeadErrors, fields: (keyof Lead)[]) {
     for (const f of fields) setError(f, errors[f] ?? null);
     const first = fields.find((f) => errors[f]);
-    if (first) controls(first)[0]?.focus();
+    if (!first) return;
+    const control = controls(first)[0];
+    const err = form.querySelector<HTMLElement>(`[data-err="${first}"]`);
+    // No toque, não abre teclado só para mostrar o erro: rola até ele.
+    if (touch && !isTextField(document.activeElement)) err?.scrollIntoView({ block: 'center' });
+    else control?.focus();
   }
 
-  /* Personalização -------------------------------------------------------- */
+  /* Personalização ------------------------------------------------------ */
   function personalize() {
     const lead = read();
     const nome = firstName(lead.nome);
@@ -127,26 +155,50 @@ export function initLeadForm() {
     form.querySelectorAll<HTMLElement>('[data-show]').forEach((n) => (n.textContent = show[n.dataset.show!] || '—'));
   }
 
-  /* Navegação ------------------------------------------------------------- */
-  function render(focus = true) {
+  /* Teclado aberto: manter campo e botão visíveis --------------------------- */
+  function keepVisible() {
+    const vv = window.visualViewport;
+    const field = document.activeElement;
+    if (!vv || !isTextField(field) || !form.contains(field)) return;
+    const visibleBottom = vv.offsetTop + vv.height;
+    const headerBottom = top.getBoundingClientRect().bottom;
+    const f = field.getBoundingClientRect();
+    const btn = actions.getBoundingClientRect();
+    // Prioridade: o campo. Depois, se couber, o botão logo abaixo dele.
+    let delta = 0;
+    if (f.bottom > visibleBottom - 12) delta = f.bottom - visibleBottom + 12;
+    else if (btn.bottom > visibleBottom) delta = Math.min(btn.bottom - visibleBottom + 8, f.top - headerBottom - 12);
+    if (f.top - delta < headerBottom + 8) delta = f.top - headerBottom - 8;
+    if (Math.abs(delta) > 4) window.scrollBy({ top: delta, behavior: 'auto' });
+  }
+  window.visualViewport?.addEventListener('resize', () => requestAnimationFrame(keepVisible));
+  form.addEventListener('focusin', (e) => {
+    if (touch && isTextField(e.target as Element)) setTimeout(keepVisible, 320);
+  });
+
+  /* Navegação ------------------------------------------------------------ */
+  function render(animate: boolean, keyboardWasOpen = false) {
     steps.forEach((s, i) => {
       s.hidden = i !== index;
-      s.classList.toggle('is-enter', i === index && focus);
+      s.classList.toggle('is-enter', i === index && animate);
     });
     const step = steps[index];
     const label = step.dataset.label ?? '';
     bar.style.width = `${((index + 1) / total) * 100}%`;
-    whereN.textContent = String(index + 1).padStart(2, '0');
-    whereLabel.textContent = label;
+    countN.textContent = String(index + 1);
     form.classList.toggle('is-first', index === 0);
     form.classList.toggle('is-last', index === total - 1);
+    form.classList.toggle('is-choice', step.dataset.kind === 'choice');
+    form.classList.add('is-ready');
     personalize();
-    if (!focus) return;
+    if (!animate) return;
+
     announce.textContent = `Pergunta ${index + 1} de ${total}: ${label}`;
-    const top = form.getBoundingClientRect().top + scrollY - 80;
-    if (scrollY > top) scrollTo({ top, behavior: 'auto' });
-    const text = step.querySelector<HTMLElement>('input.in, textarea.in');
-    if (text) {
+    window.scrollTo({ top: 0, behavior: 'auto' });
+
+    const text = step.querySelector<HTMLInputElement | HTMLTextAreaElement>('input.in, textarea.in');
+    // Celular: só mantém o teclado se ele já estava aberto. Computador: foca o campo.
+    if (text && (!touch || keyboardWasOpen)) {
       text.focus({ preventScroll: true });
       return;
     }
@@ -157,17 +209,39 @@ export function initLeadForm() {
     }
   }
 
-  function validStep(i: number, show = true): boolean {
-    const fields = STEP_FIELDS[steps[i].dataset.step ?? ''] ?? [];
-    const errors = validateLead(read(), fields);
-    if (show) showErrors(errors, fields);
-    return !fields.some((f) => errors[f]);
+  function show(to: number, animate = true) {
+    const keyboardWasOpen = isTextField(document.activeElement) || typingAtTap;
+    typingAtTap = false;
+    index = Math.max(0, Math.min(total - 1, to));
+    render(animate, keyboardWasOpen);
+    saveDraft();
   }
 
-  function go(to: number, focus = true) {
-    index = Math.max(0, Math.min(total - 1, to));
-    render(focus);
-    saveDraft();
+  /** Avançar ou pular: cria entrada no histórico (o "voltar" do navegador volta uma etapa). */
+  function forward(to: number) {
+    history.pushState({ cpStep: to }, '');
+    show(to);
+  }
+
+  function back() {
+    if (index === 0) return;
+    if (history.state?.cpStep === index) history.back();
+    else {
+      history.replaceState({ cpStep: index - 1 }, '');
+      show(index - 1);
+    }
+  }
+
+  addEventListener('popstate', (e) => {
+    const s = (e.state as { cpStep?: number } | null)?.cpStep;
+    if (typeof s === 'number' && !finished) show(s);
+  });
+
+  function validStep(i: number, showIt = true): boolean {
+    const fields = STEP_FIELDS[steps[i].dataset.step ?? ''] ?? [];
+    const errors = validateLead(read(), fields);
+    if (showIt) showErrors(errors, fields);
+    return !fields.some((f) => errors[f]);
   }
 
   function next() {
@@ -178,21 +252,23 @@ export function initLeadForm() {
       ig.value = normalizeInstagram(ig.value);
     }
     track('form_step', { step: index + 1, step_name: name });
-    go(index + 1);
+    forward(index + 1);
   }
 
+  btnNext.addEventListener('pointerdown', () => (typingAtTap = isTextField(document.activeElement)));
   btnNext.addEventListener('click', next);
-  btnBack.addEventListener('click', () => go(index - 1));
+  backButtons.forEach((b) => b.addEventListener('click', back));
   $<HTMLButtonElement>('[data-skip]').addEventListener('click', () => {
     form.querySelector<HTMLInputElement>('[name="instagram"]')!.value = '';
     track('form_step', { step: index + 1, step_name: 'instagram', skipped: true });
-    go(index + 1);
+    forward(index + 1);
   });
   form.querySelectorAll<HTMLButtonElement>('[data-goto]').forEach((b) =>
-    b.addEventListener('click', () => go(steps.findIndex((s) => s.dataset.step === b.dataset.goto))),
+    b.addEventListener('click', () => forward(steps.findIndex((s) => s.dataset.step === b.dataset.goto))),
   );
 
-  // Teclado: Enter avança; Ctrl/Cmd+Enter no texto longo; 1–9 escolhe opção.
+  // Enter / "Próximo" do teclado: vai ao próximo campo vazio da etapa ou avança.
+  // No computador, 1–9 escolhe opção.
   form.addEventListener('keydown', (e) => {
     const t = e.target as HTMLElement;
     const step = steps[index];
@@ -200,24 +276,31 @@ export function initLeadForm() {
       if (t.tagName === 'BUTTON' || t.tagName === 'A') return;
       if (t.tagName === 'TEXTAREA' && !(e.ctrlKey || e.metaKey)) return;
       e.preventDefault();
+      if (isTextField(t)) {
+        const fields = [...step.querySelectorAll<HTMLInputElement | HTMLSelectElement>('input.in, select.in')];
+        const nextEmpty = fields.slice(fields.indexOf(t as HTMLInputElement) + 1).find((f) => !f.value);
+        if (nextEmpty) {
+          nextEmpty.focus();
+          return;
+        }
+      }
       if (index < total - 1) next();
       else form.requestSubmit();
       return;
     }
     const inChoice = t instanceof HTMLInputElement && (t.type === 'radio' || t.type === 'checkbox');
     if (/^[1-9]$/.test(e.key) && (inChoice || !['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName))) {
-      const opts = [...step.querySelectorAll<HTMLInputElement>('.opt input')];
-      const opt = opts[Number(e.key) - 1];
+      const opt = [...step.querySelectorAll<HTMLInputElement>('.opt input')][Number(e.key) - 1];
       if (!opt) return;
       e.preventDefault();
       opt.checked = opt.type === 'checkbox' ? !opt.checked : true;
       opt.focus();
       opt.dispatchEvent(new Event('change', { bubbles: true }));
-      if (opt.type === 'radio' && step.hasAttribute('data-auto')) setTimeout(() => steps[index] === step && next(), 250);
+      if (opt.type === 'radio' && step.hasAttribute('data-auto')) setTimeout(() => steps[index] === step && next(), 200);
     }
   });
 
-  // Toque/clique numa opção única avança sozinho (teclado não, para não surpreender).
+  // Toque numa opção única avança sozinho (com o teclado físico, não).
   form.addEventListener('pointerdown', () => (lastPointer = Date.now()));
   form.addEventListener('change', (e) => {
     const input = e.target as HTMLInputElement;
@@ -225,10 +308,10 @@ export function initLeadForm() {
     const step = steps[index];
     if (!step.hasAttribute('data-auto') || !step.contains(input)) return;
     if (Date.now() - lastPointer > 1000) return;
-    setTimeout(() => steps[index] === step && next(), 260);
+    setTimeout(() => steps[index] === step && next(), 220);
   });
 
-  /* Campos ---------------------------------------------------------------- */
+  /* Campos --------------------------------------------------------------- */
   const whatsapp = form.querySelector<HTMLInputElement>('[name="whatsapp"]')!;
   whatsapp.addEventListener('input', () => {
     const f = formatWhatsapp(whatsapp.value);
@@ -245,9 +328,13 @@ export function initLeadForm() {
     if (status.dataset.kind === 'error') status.hidden = true;
     saveDraft();
   });
-  form.addEventListener('change', () => saveDraft());
+  form.addEventListener('change', (e) => {
+    const t = e.target as HTMLInputElement;
+    if (t.name) setError(t.name, null);
+    saveDraft();
+  });
 
-  // Sugestão de cidades pelo IBGE ao escolher o estado.
+  // Sugestão de cidades do IBGE ao escolher o estado.
   const uf = form.querySelector<HTMLSelectElement>('[name="uf"]')!;
   const datalist = form.querySelector<HTMLDataListElement>('#lf-cidades')!;
   const cache = new Map<string, string[]>();
@@ -256,9 +343,10 @@ export function initLeadForm() {
     try {
       let names = cache.get(uf.value);
       if (!names) {
-        const res = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf.value}/municipios?orderBy=nome`, {
-          signal: timeout(5000),
-        });
+        const res = await fetch(
+          `https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf.value}/municipios?orderBy=nome`,
+          { signal: timeout(5000) },
+        );
         if (!res.ok) return;
         names = ((await res.json()) as { nome: string }[]).map((m) => m.nome);
         cache.set(uf.value, names);
@@ -269,22 +357,26 @@ export function initLeadForm() {
     }
   });
 
-  /* Rascunho -------------------------------------------------------------- */
+  /* Rascunho: sobrevive a recarregar, trocar de app e voltar ----------------- */
   let timer: number | undefined;
-  let done = false;
   function flush() {
-    if (!store || done) return;
+    if (!draftStore || finished) return;
     clearTimeout(timer);
     const values = raw();
     for (const k of NOT_SAVED) delete values[k];
-    store.setItem(DRAFT_KEY, JSON.stringify({ values, index }));
+    try {
+      draftStore.setItem(DRAFT_KEY, JSON.stringify({ ts: Date.now(), values, index }));
+    } catch {
+      /* armazenamento cheio: segue sem salvar */
+    }
   }
   function saveDraft() {
-    if (!store) return;
+    if (!draftStore) return;
     clearTimeout(timer);
-    timer = window.setTimeout(flush, 200);
+    timer = window.setTimeout(flush, 150);
   }
   addEventListener('pagehide', flush);
+  document.addEventListener('visibilitychange', () => document.visibilityState === 'hidden' && flush());
 
   function apply(values: Record<string, string | string[]>) {
     for (const [name, value] of Object.entries(values)) {
@@ -299,19 +391,26 @@ export function initLeadForm() {
   function restore() {
     let restored = false;
     try {
-      const saved = store ? (JSON.parse(store.getItem(DRAFT_KEY) ?? 'null') as { values: Record<string, string | string[]>; index: number } | null) : null;
-      if (saved) {
+      const saved = JSON.parse(draftStore?.getItem(DRAFT_KEY) ?? 'null') as {
+        ts: number;
+        values: Record<string, string | string[]>;
+        index: number;
+      } | null;
+      if (saved && Date.now() - saved.ts < DRAFT_TTL) {
         apply(saved.values);
         restored = true;
+        started = true;
+        // Volta para a etapa em que parou, sem pular etapa incompleta.
         let target = 0;
         while (target < Math.min(saved.index, total - 1) && validStep(target, false)) target++;
         index = target;
-        started = true;
+      } else if (saved) {
+        draftStore?.removeItem(DRAFT_KEY);
       }
     } catch {
-      store?.removeItem(DRAFT_KEY);
+      draftStore?.removeItem(DRAFT_KEY);
     }
-    // Situações marcadas na home viram dores pré-marcadas.
+    // Situações marcadas na home chegam como dores pré-marcadas.
     if (!restored || !(raw().dores as string[] | undefined)?.length) {
       try {
         const sit = JSON.parse(localStorage.getItem(SITUATIONS_KEY) ?? 'null') as { dores: string[] } | null;
@@ -322,19 +421,18 @@ export function initLeadForm() {
     }
   }
 
-  /* Envio ----------------------------------------------------------------- */
+  /* Envio ---------------------------------------------------------------- */
   function setStatus(kind: 'error' | 'success', html: string) {
     status.dataset.kind = kind;
-    status.setAttribute('role', kind === 'error' ? 'alert' : 'status');
     status.innerHTML = html;
     status.hidden = false;
   }
 
   function loading(on: boolean) {
     btnSubmit.disabled = on;
-    btnBack.disabled = on;
+    backButtons.forEach((b) => (b.disabled = on));
     btnSubmit.toggleAttribute('data-loading', on);
-    submitLabel.textContent = on ? 'Enviando…' : 'Enviar minha agropecuária para análise';
+    submitLabel.textContent = on ? 'Enviando...' : 'Enviar minha agropecuária';
   }
 
   const stepWithError = (errors: LeadErrors) =>
@@ -342,12 +440,12 @@ export function initLeadForm() {
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    if (sending) return;
+    if (sending) return; // sem duplo toque
     const lead = read();
     const errors = validateLead(lead);
     const bad = stepWithError(errors);
     if (bad !== -1) {
-      go(bad);
+      forward(bad);
       showErrors(errors, STEP_FIELDS[steps[bad].dataset.step ?? '']);
       return;
     }
@@ -371,41 +469,43 @@ export function initLeadForm() {
         loading(false);
         const i = stepWithError(data.errors);
         if (i !== -1) {
-          go(i);
+          forward(i);
           showErrors(data.errors, STEP_FIELDS[steps[i].dataset.step ?? '']);
         }
         return;
       }
       if (!res.ok || !data.ok) throw new Error(`HTTP ${res.status}`);
 
-      // Lead salvo no servidor. Só agora: página de obrigado (onde o evento Lead dispara).
-      done = true;
+      // Lead salvo no servidor. Só agora vai para a confirmação (onde o evento Lead dispara).
+      finished = true;
       clearTimeout(timer);
-      store?.removeItem(DRAFT_KEY);
-      store?.setItem(PENDING_KEY, eventId);
-      store?.setItem(NAME_KEY, lead.nome);
+      draftStore?.removeItem(DRAFT_KEY);
+      session?.setItem(PENDING_KEY, eventId);
+      session?.setItem(NAME_KEY, lead.nome);
       try {
         localStorage.removeItem(SITUATIONS_KEY);
       } catch {
         /* ignora */
       }
+      submitLabel.textContent = 'Enviado';
       btnSubmit.removeAttribute('data-loading');
-      submitLabel.textContent = 'Recebido!';
-      setStatus('success', '<strong>Recebemos sua agropecuária.</strong> Só um instante…');
-      location.assign(`/obrigado/?lead=${encodeURIComponent(eventId)}`);
+      location.replace(`/obrigado/?lead=${encodeURIComponent(eventId)}`);
     } catch {
       sending = false;
       loading(false);
-      setStatus('error', '<strong>Não conseguimos enviar agora.</strong> Suas respostas continuam aqui. Confira a conexão e tente de novo.');
+      setStatus('error', '<strong>Não conseguimos enviar agora.</strong> Suas respostas continuam aqui. Confira a internet e toque em enviar de novo.');
     }
   });
 
-  /* Início ---------------------------------------------------------------- */
+  /* Início --------------------------------------------------------------- */
   restore();
+  history.replaceState({ cpStep: index }, '');
   render(false);
+  if (!touch && index === 0) form.querySelector<HTMLInputElement>('#f-nome')?.focus({ preventScroll: true });
+
   const erro = new URLSearchParams(location.search).get('erro');
   if (erro) {
-    go(total - 1, false);
+    show(total - 1, false);
     setStatus(
       'error',
       erro === 'formulario'

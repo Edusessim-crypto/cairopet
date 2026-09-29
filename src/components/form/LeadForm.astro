@@ -1,10 +1,17 @@
 ---
 /**
- * Formulário de qualificação — uma pergunta por tela, na ordem oficial.
+ * Formulário CairoPet — produto mobile. Uma pergunta por tela, na ordem oficial.
+ *
+ * Estrutura de cada tela (celular primeiro):
+ *   barra superior (voltar 44px · logo · fechar) + progresso fino "5 de 18"
+ *   grupo da etapa · pergunta · explicação curta · resposta
+ *   botão principal de largura total, no alcance do polegar
+ *
  * Sem JS: todas as etapas aparecem em sequência e o envio é um POST comum.
- * Com JS (src/scripts/lead-form.ts): etapas, progresso, Enter, voltar,
- * rascunho salvo na sessão, envio via fetch e redirecionamento para /obrigado/.
+ * Com JS (src/scripts/lead-form.ts): etapas, histórico do navegador, rascunho
+ * salvo no aparelho, teclado mobile cuidado, envio via fetch → /obrigado/.
  */
+import Logo from '../brand/Logo.astro';
 import {
   DECISOR_OPTIONS,
   DORES_OPTIONS,
@@ -19,65 +26,73 @@ import {
   UFS,
 } from '../../lib/lead-schema';
 
-type Choice = { id: string; label: string; kind: 'radio' | 'checkbox'; name: string; q: string; hint?: string; options: readonly string[]; auto?: boolean };
+type Choice = {
+  id: string;
+  label: string;
+  group: string;
+  kind: 'radio' | 'checkbox';
+  name: string;
+  q: string;
+  hint?: string;
+  options: readonly string[];
+};
 
-const choices: Record<string, Choice> = {
-  tipo: { id: 'tipo', label: 'Tipo de negócio', kind: 'radio', name: 'tipo_negocio', q: 'Qual é o tipo de negócio?', options: TIPO_NEGOCIO_OPTIONS, auto: true },
-  tamanho: { id: 'tamanho', label: 'Tamanho', kind: 'radio', name: 'tamanho', q: 'Qual é o tamanho da operação hoje?', options: TAMANHO_OPTIONS, auto: true },
-  faturamento: {
+const G = { contato: 'Contato', loja: 'Sua loja', mkt: 'Marketing hoje', next: 'Próximos passos', fim: 'Finalizando' };
+
+const choices: Choice[] = [
+  { id: 'tipo', label: 'Tipo de negócio', group: G.loja, kind: 'radio', name: 'tipo_negocio', q: 'Qual é o tipo de negócio?', options: TIPO_NEGOCIO_OPTIONS },
+  { id: 'tamanho', label: 'Tamanho', group: G.loja, kind: 'radio', name: 'tamanho', q: 'Qual é o tamanho da operação hoje?', options: TAMANHO_OPTIONS },
+  {
     id: 'faturamento',
     label: 'Faturamento',
+    group: G.loja,
     kind: 'radio',
     name: 'faturamento',
-    q: 'Qual é o faturamento mensal aproximado da loja?',
-    hint: 'Serve só para dimensionar a proposta. Fica entre você e a CairoPet.',
+    q: 'Qual é o faturamento mensal aproximado?',
+    hint: 'Só para dimensionar a proposta. Fica entre você e a CairoPet.',
     options: FATURAMENTO_OPTIONS,
-    auto: true,
   },
-  marketing: { id: 'marketing', label: 'Marketing atual', kind: 'radio', name: 'marketing_atual', q: 'Quem cuida do marketing da loja hoje?', options: MARKETING_OPTIONS, auto: true },
-  anuncios: {
-    id: 'anuncios',
-    label: 'Anúncios hoje',
-    kind: 'radio',
-    name: 'investimento_anuncios',
-    q: 'Quanto a loja investe em anúncios hoje?',
-    options: INVESTIMENTO_ANUNCIOS_OPTIONS,
-    auto: true,
-  },
-  dores: {
-    id: 'dores',
-    label: 'O que incomoda',
-    kind: 'checkbox',
-    name: 'dores',
-    q: 'O que mais incomoda você hoje?',
-    hint: 'Pode marcar mais de uma.',
-    options: DORES_OPTIONS,
-  },
-  objetivo: { id: 'objetivo', label: 'Objetivo', kind: 'radio', name: 'objetivo', q: 'O que você mais quer melhorar nos próximos meses?', options: OBJETIVO_OPTIONS, auto: true },
-  momento: { id: 'momento', label: 'Momento', kind: 'radio', name: 'momento', q: 'Em que momento você está?', options: MOMENTO_OPTIONS, auto: true },
-  decisor: { id: 'decisor', label: 'Decisão', kind: 'radio', name: 'decisor', q: 'Quem decide a contratação do marketing?', options: DECISOR_OPTIONS, auto: true },
-  investimento: {
+  { id: 'marketing', label: 'Marketing atual', group: G.mkt, kind: 'radio', name: 'marketing_atual', q: 'Quem cuida do marketing da loja hoje?', options: MARKETING_OPTIONS },
+  { id: 'anuncios', label: 'Anúncios hoje', group: G.mkt, kind: 'radio', name: 'investimento_anuncios', q: 'Quanto a loja investe em anúncios hoje?', options: INVESTIMENTO_ANUNCIOS_OPTIONS },
+  { id: 'dores', label: 'O que incomoda', group: G.mkt, kind: 'checkbox', name: 'dores', q: 'O que mais incomoda você hoje?', hint: 'Pode marcar mais de uma.', options: DORES_OPTIONS },
+  { id: 'objetivo', label: 'Objetivo', group: G.next, kind: 'radio', name: 'objetivo', q: 'O que você mais quer melhorar nos próximos meses?', options: OBJETIVO_OPTIONS },
+  { id: 'momento', label: 'Momento', group: G.next, kind: 'radio', name: 'momento', q: 'Em que momento você está?', options: MOMENTO_OPTIONS },
+  { id: 'decisor', label: 'Decisão', group: G.next, kind: 'radio', name: 'decisor', q: 'Quem decide a contratação do marketing?', options: DECISOR_OPTIONS },
+  {
     id: 'investimento',
     label: 'Investimento',
+    group: G.next,
     kind: 'radio',
     name: 'faixa_investimento',
     q: 'Quanto você imagina investir por mês no marketing da loja?',
     hint: 'Somando serviço e anúncios. É uma referência, não um compromisso.',
     options: FAIXA_INVESTIMENTO_OPTIONS,
-    auto: true,
   },
-};
+];
 
 const TOTAL = 18;
-const num = (n: number) => String(n).padStart(2, '0');
-const order = ['tipo', 'tamanho', 'faturamento', 'marketing', 'anuncios', 'dores', 'objetivo', 'momento', 'decisor', 'investimento'];
+const arrow = 'M2.5 8h10M8.5 3.5 13 8l-4.5 4.5';
 ---
 
 <form class="lf" method="post" action="/api/lead" data-lead-form novalidate>
-  <div class="lf__progress" data-js-only>
-    <div class="lf__bar" aria-hidden="true"><span data-bar></span></div>
-    <p class="lf__where mono"><span data-where-n>01</span>/{TOTAL} · <span data-where-label>Nome</span></p>
-  </div>
+  <header class="lf__top">
+    <div class="lf__bar-row">
+      <button type="button" class="lf__icon" data-back aria-label="Voltar para a pergunta anterior" data-js-only>
+        <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M13.5 8h-10M7.5 3.5 3 8l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      </button>
+      <a href="/" class="lf__logo" aria-label="CairoPet — voltar ao site">
+        <Logo variant="black" width={88} loading="eager" alt="" />
+      </a>
+      <a href="/" class="lf__icon lf__close" aria-label="Sair do formulário (suas respostas ficam salvas)">
+        <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></svg>
+      </a>
+    </div>
+    <div class="lf__progress" data-js-only>
+      <div class="lf__track" aria-hidden="true"><span data-bar></span></div>
+      <p class="lf__count"><span data-count-n>1</span> de {TOTAL}</p>
+    </div>
+  </header>
+
   <p class="visually-hidden" aria-live="polite" data-announce></p>
 
   <div class="lf__hp" aria-hidden="true">
@@ -85,70 +100,67 @@ const order = ['tipo', 'tamanho', 'faturamento', 'marketing', 'anuncios', 'dores
     <input id="lf-website" name="website" type="text" tabindex="-1" autocomplete="off" />
   </div>
 
-  <!-- 01 · Nome -->
-  <section class="st" data-step="nome" data-label="Nome">
-    <p class="st__n mono">01</p>
-    <label class="st__q" for="f-nome">Pra começar: qual é o seu nome?</label>
-    <input class="in" id="f-nome" name="nome" type="text" autocomplete="name" autocapitalize="words" maxlength="80" enterkeyhint="next" aria-describedby="e-nome" />
-    <p class="st__err" id="e-nome" data-err="nome" hidden></p>
-  </section>
+  <div class="lf__body">
+    <!-- 01 · Nome -->
+    <section class="st" data-step="nome" data-label="Nome" data-kind="text">
+      <p class="st__group">{G.contato}</p>
+      <label class="st__q" for="f-nome">Pra começar: qual é o seu nome?</label>
+      <input class="in" id="f-nome" name="nome" type="text" inputmode="text" autocomplete="name" autocapitalize="words" maxlength="80" enterkeyhint="next" aria-describedby="e-nome" />
+      <p class="st__err" id="e-nome" data-err="nome" hidden></p>
+    </section>
 
-  <!-- 02 · WhatsApp -->
-  <section class="st" data-step="whatsapp" data-label="WhatsApp">
-    <p class="st__n mono">02</p>
-    <label class="st__q" for="f-whatsapp"><span data-greet hidden>Prazer, <span data-fill="nome"></span>. </span>Qual é o seu WhatsApp?</label>
-    <p class="st__hint" id="h-whatsapp">Com DDD. É por ele que a gente retorna.</p>
-    <input class="in" id="f-whatsapp" name="whatsapp" type="tel" inputmode="tel" autocomplete="tel-national" placeholder="(00) 00000-0000" maxlength="20" enterkeyhint="next" aria-describedby="h-whatsapp e-whatsapp" />
-    <p class="st__err" id="e-whatsapp" data-err="whatsapp" hidden></p>
-  </section>
+    <!-- 02 · WhatsApp -->
+    <section class="st" data-step="whatsapp" data-label="WhatsApp" data-kind="text">
+      <p class="st__group">{G.contato}</p>
+      <label class="st__q" for="f-whatsapp"><span data-greet hidden>Prazer, <span data-fill="nome"></span>. </span>Qual é o seu WhatsApp?</label>
+      <p class="st__hint" id="h-whatsapp">Com DDD. É por ele que a gente retorna.</p>
+      <input class="in in--big" id="f-whatsapp" name="whatsapp" type="tel" inputmode="tel" autocomplete="tel-national" placeholder="(00) 00000-0000" maxlength="20" enterkeyhint="next" aria-describedby="h-whatsapp e-whatsapp" />
+      <p class="st__err" id="e-whatsapp" data-err="whatsapp" hidden></p>
+    </section>
 
-  <!-- 03 · Instagram -->
-  <section class="st" data-step="instagram" data-label="Instagram">
-    <p class="st__n mono">03</p>
-    <label class="st__q" for="f-instagram">Qual é o Instagram da agropecuária?</label>
-    <p class="st__hint" id="h-instagram">Pode ser o @ ou o link. Se a loja não tiver, tudo bem.</p>
-    <input class="in" id="f-instagram" name="instagram" type="text" inputmode="url" autocapitalize="none" spellcheck="false" placeholder="@sualoja" maxlength="200" enterkeyhint="next" aria-describedby="h-instagram" />
-    <button type="button" class="st__skip" data-skip data-js-only>A loja não tem Instagram</button>
-  </section>
+    <!-- 03 · Instagram -->
+    <section class="st" data-step="instagram" data-label="Instagram" data-kind="text">
+      <p class="st__group">{G.loja}</p>
+      <label class="st__q" for="f-instagram">Qual é o Instagram da agropecuária?</label>
+      <p class="st__hint" id="h-instagram">Pode ser o @ ou o link do perfil.</p>
+      <input class="in" id="f-instagram" name="instagram" type="text" inputmode="text" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="@sualoja" maxlength="200" enterkeyhint="next" aria-describedby="h-instagram" />
+      <button type="button" class="st__alt" data-skip data-js-only>A loja não tem Instagram</button>
+    </section>
 
-  <!-- 04 · Cidade + Estado -->
-  <section class="st" data-step="cidade" data-label="Cidade">
-    <p class="st__n mono">04</p>
-    <h2 class="st__q">Em qual cidade fica a loja?</h2>
-    <p class="st__hint">É a cidade que a gente confere: a CairoPet atende uma agropecuária por cidade.</p>
-    <div class="st__row">
+    <!-- 04 · Cidade + Estado -->
+    <section class="st" data-step="cidade" data-label="Cidade" data-kind="text">
+      <p class="st__group">{G.loja}</p>
+      <h2 class="st__q">Em qual cidade fica a loja?</h2>
+      <p class="st__hint">É o que a gente confere primeiro: a CairoPet atende uma agropecuária por cidade.</p>
       <div class="st__field">
         <label class="st__label" for="f-cidade">Cidade</label>
-        <input class="in" id="f-cidade" name="cidade" type="text" list="lf-cidades" autocomplete="address-level2" autocapitalize="words" maxlength="80" enterkeyhint="next" aria-describedby="e-cidade" />
+        <input class="in" id="f-cidade" name="cidade" type="text" inputmode="text" list="lf-cidades" autocomplete="address-level2" autocapitalize="words" maxlength="80" enterkeyhint="next" aria-describedby="e-cidade" />
         <p class="st__err" id="e-cidade" data-err="cidade" hidden></p>
       </div>
       <div class="st__field">
         <label class="st__label" for="f-uf">Estado</label>
         <select class="in in--select" id="f-uf" name="uf" autocomplete="address-level1" aria-describedby="e-uf">
-          <option value="">Selecione</option>
+          <option value="">Selecione o estado</option>
           {UFS.map(([uf, name]) => <option value={uf}>{name}</option>)}
         </select>
         <p class="st__err" id="e-uf" data-err="uf" hidden></p>
       </div>
-    </div>
-    <datalist id="lf-cidades"></datalist>
-  </section>
+      <datalist id="lf-cidades"></datalist>
+    </section>
 
-  <!-- 05 · Nome da agropecuária -->
-  <section class="st" data-step="loja" data-label="Agropecuária">
-    <p class="st__n mono">05</p>
-    <label class="st__q" for="f-loja">Como se chama a sua agropecuária<span data-when="cidade" hidden> em <span data-fill="cidade"></span></span>?</label>
-    <input class="in" id="f-loja" name="loja" type="text" autocomplete="organization" maxlength="120" enterkeyhint="next" aria-describedby="e-loja" />
-    <p class="st__err" id="e-loja" data-err="loja" hidden></p>
-  </section>
+    <!-- 05 · Nome da agropecuária -->
+    <section class="st" data-step="loja" data-label="Agropecuária" data-kind="text">
+      <p class="st__group">{G.loja}</p>
+      <label class="st__q" for="f-loja">Como se chama a sua agropecuária<span data-when="cidade" hidden> em <span data-fill="cidade"></span></span>?</label>
+      <input class="in" id="f-loja" name="loja" type="text" inputmode="text" autocomplete="organization" autocapitalize="words" maxlength="120" enterkeyhint="next" aria-describedby="e-loja" />
+      <p class="st__err" id="e-loja" data-err="loja" hidden></p>
+    </section>
 
-  <!-- 06 a 15 · Escolhas -->
-  {
-    order.map((key, i) => {
-      const c = choices[key];
-      return (
-        <section class="st" data-step={c.id} data-label={c.label} data-auto={c.auto ? '' : undefined}>
-          <p class="st__n mono">{num(i + 6)}</p>
+    <!-- 06 a 15 · Escolhas -->
+    {
+      choices.map((c) => (
+        <section class="st" data-step={c.id} data-label={c.label} data-kind="choice" data-auto={c.kind === 'radio' ? '' : undefined}>
+          <p class="st__group">{c.group}</p>
           <fieldset aria-describedby={`${c.hint ? `h-${c.id} ` : ''}e-${c.name}`}>
             <legend class="st__q">{c.q}</legend>
             {c.hint && (
@@ -160,107 +172,174 @@ const order = ['tipo', 'tamanho', 'faturamento', 'marketing', 'anuncios', 'dores
               {c.options.map((o, j) => (
                 <label class:list={['opt', { 'opt--multi': c.kind === 'checkbox' }]}>
                   <input type={c.kind} name={c.name} value={o} />
-                  <span class="opt__key mono" aria-hidden="true">
+                  <span class="opt__mark" aria-hidden="true" />
+                  <span class="opt__text">{o}</span>
+                  <span class="opt__key" aria-hidden="true">
                     {j + 1}
                   </span>
-                  <span class="opt__text">{o}</span>
-                  <span class="opt__mark" aria-hidden="true" />
                 </label>
               ))}
             </div>
             <p class="st__err" id={`e-${c.name}`} data-err={c.name} hidden />
           </fieldset>
         </section>
-      );
-    })
-  }
+      ))
+    }
 
-  <!-- 16 · Contexto -->
-  <section class="st" data-step="contexto" data-label="Contexto">
-    <p class="st__n mono">16</p>
-    <label class="st__q" for="f-contexto">Quer contar mais alguma coisa sobre a loja?</label>
-    <p class="st__hint" id="h-contexto">Opcional. Uma promoção que não funcionou, um produto que precisa girar, uma data forte da região…</p>
-    <textarea class="in in--area" id="f-contexto" name="contexto" rows="4" maxlength="1000" aria-describedby="h-contexto"></textarea>
-    <p class="st__kbd mono" data-js-only>Ctrl + Enter para continuar</p>
-  </section>
+    <!-- 16 · Contexto -->
+    <section class="st" data-step="contexto" data-label="Contexto" data-kind="text">
+      <p class="st__group">{G.fim}</p>
+      <label class="st__q" for="f-contexto">Quer contar mais alguma coisa sobre a loja?</label>
+      <p class="st__hint" id="h-contexto">Opcional. Uma promoção que não funcionou, um produto que precisa girar, uma data forte da região…</p>
+      <textarea class="in in--area" id="f-contexto" name="contexto" rows="4" maxlength="1000" inputmode="text" autocapitalize="sentences" aria-describedby="h-contexto"></textarea>
+    </section>
 
-  <!-- 17 · LGPD -->
-  <section class="st" data-step="lgpd" data-label="Privacidade">
-    <p class="st__n mono">17</p>
-    <h2 class="st__q">Seus dados, do jeito certo.</h2>
-    <p class="st__hint">Usamos as informações só para analisar a sua agropecuária e falar com você sobre ela.</p>
-    <label class="consent">
-      <input type="checkbox" name="consentimento" value="sim" aria-describedby="e-consentimento" />
-      <span class="consent__box" aria-hidden="true"></span>
-      <span>
-        Ao enviar, você concorda com nossa <a href="/politica-de-privacidade/" target="_blank" rel="noopener">Política de Privacidade<span class="visually-hidden"> (abre em nova aba)</span></a> e com o tratamento dos seus dados conforme a LGPD.
-      </span>
-    </label>
-    <p class="st__err" id="e-consentimento" data-err="consentimento" hidden></p>
-  </section>
+    <!-- 17 · LGPD -->
+    <section class="st" data-step="lgpd" data-label="Privacidade" data-kind="choice">
+      <p class="st__group">{G.fim}</p>
+      <h2 class="st__q">Seus dados, do jeito certo.</h2>
+      <p class="st__hint">Usamos as informações só para analisar a sua agropecuária e falar com você sobre ela.</p>
+      <label class="consent">
+        <input type="checkbox" name="consentimento" value="sim" aria-describedby="e-consentimento" />
+        <span class="consent__box" aria-hidden="true"></span>
+        <span class="consent__text">
+          Concordo com a <a href="/politica-de-privacidade/" target="_blank" rel="noopener">Política de Privacidade<span class="visually-hidden"> (abre em nova aba)</span></a> e com o tratamento dos meus dados conforme a LGPD.
+        </span>
+      </label>
+      <p class="st__err" id="e-consentimento" data-err="consentimento" hidden></p>
+    </section>
 
-  <!-- 18 · Envio -->
-  <section class="st" data-step="envio" data-label="Envio">
-    <p class="st__n mono">18</p>
-    <h2 class="st__q">Tudo certo? É só enviar.</h2>
-    <dl class="review" data-review data-js-only>
-      <div><dt>Nome</dt><dd data-show="nome"></dd><button type="button" data-goto="nome">Alterar</button></div>
-      <div><dt>WhatsApp</dt><dd data-show="whatsapp"></dd><button type="button" data-goto="whatsapp">Alterar</button></div>
-      <div><dt>Agropecuária</dt><dd data-show="loja"></dd><button type="button" data-goto="loja">Alterar</button></div>
-      <div><dt>Cidade</dt><dd data-show="cidade_uf"></dd><button type="button" data-goto="cidade">Alterar</button></div>
-    </dl>
-    <button type="submit" class="btn btn--block lf__submit" data-submit>
-      <span class="lf__spin" aria-hidden="true"></span>
-      <span data-submit-label>Enviar minha agropecuária para análise</span>
-    </button>
-    <div class="lf__status" data-status hidden></div>
-  </section>
+    <!-- 18 · Envio -->
+    <section class="st" data-step="envio" data-label="Envio" data-kind="choice">
+      <p class="st__group">{G.fim}</p>
+      <h2 class="st__q">Tudo certo? É só enviar.</h2>
+      <dl class="review" data-js-only>
+        <div><dt>Nome</dt><dd data-show="nome"></dd><button type="button" data-goto="nome" aria-label="Alterar nome">Alterar</button></div>
+        <div><dt>WhatsApp</dt><dd data-show="whatsapp"></dd><button type="button" data-goto="whatsapp" aria-label="Alterar WhatsApp">Alterar</button></div>
+        <div><dt>Loja</dt><dd data-show="loja"></dd><button type="button" data-goto="loja" aria-label="Alterar nome da loja">Alterar</button></div>
+        <div><dt>Cidade</dt><dd data-show="cidade_uf"></dd><button type="button" data-goto="cidade" aria-label="Alterar cidade">Alterar</button></div>
+      </dl>
+    </section>
+  </div>
 
-  <div class="lf__nav" data-js-only>
-    <button type="button" class="lf__back" data-back>
-      <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M13.5 8h-10M7.5 3.5 3 8l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
-      Voltar
-    </button>
-    <p class="lf__enter mono" aria-hidden="true">Enter ↵</p>
-    <button type="button" class="btn lf__next" data-next>
-      <span>Continuar</span>
-      <span class="btn__arrow" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none"><path d="M2.5 8h10M8.5 3.5 13 8l-4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
-    </button>
+  <div class="lf__actions">
+    <div class="lf__status" data-status role="alert" hidden></div>
+    <div class="lf__buttons">
+      <button type="button" class="lf__back-text" data-back data-js-only>Voltar</button>
+      <button type="button" class="lf__btn" data-next data-js-only>
+        <span>Continuar</span>
+        <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d={arrow} stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      </button>
+      <button type="submit" class="lf__btn lf__submit" data-submit>
+        <span class="lf__spin" aria-hidden="true"></span>
+        <span data-submit-label>Enviar minha agropecuária</span>
+      </button>
+    </div>
+    <p class="lf__enter" aria-hidden="true" data-js-only>ou pressione Enter ↵</p>
   </div>
 </form>
 
 <style>
+  /* ============================================================
+     Casca mobile: coluna com altura dinâmica (100dvh), topo
+     sticky com safe-area e ações no fim do fluxo.
+     ============================================================ */
   .lf {
-    position: relative;
+    --side: clamp(1rem, 5.5vw, 1.5rem);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    min-height: 100dvh;
+    max-width: 38rem;
+    margin-inline: auto;
   }
 
-  .lf__progress {
+  /* Topo ------------------------------------------------------ */
+  .lf__top {
     position: sticky;
-    top: var(--header-h);
-    z-index: 5;
-    margin-bottom: clamp(2rem, 6vh, 3.5rem);
-    padding-block: 0.75rem;
+    top: 0;
+    z-index: 10;
+    padding: env(safe-area-inset-top) var(--side) 0;
     background: var(--white);
   }
 
-  .lf__bar {
+  .lf__bar-row {
+    display: grid;
+    grid-template-columns: 44px 1fr 44px;
+    align-items: center;
+    height: 56px;
+    margin-inline: -10px;
+  }
+
+  .lf__icon {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border: 0;
+    border-radius: 10px;
+    background: none;
+    color: var(--ink);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .lf__icon:active {
+    background: var(--mist);
+  }
+
+  .lf__icon svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .lf__close {
+    grid-column: 3;
+  }
+
+  .lf__logo {
+    grid-column: 2;
+    justify-self: center;
+    padding: 0.5rem;
+  }
+
+  .lf__logo :global(.logo) {
+    width: 84px;
+    height: auto;
+  }
+
+  :global(.js) .lf.is-first [data-back] {
+    visibility: hidden;
+  }
+
+  .lf__progress {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding-bottom: 0.75rem;
+  }
+
+  .lf__track {
+    flex: 1;
     height: 4px;
     border-radius: 4px;
     background: var(--mist);
     overflow: hidden;
   }
 
-  .lf__bar span {
+  .lf__track span {
     display: block;
-    width: 5%;
+    width: 5.5%;
     height: 100%;
+    border-radius: 4px;
     background: var(--ink);
-    transition: width 0.4s var(--ease);
+    transition: width 0.2s var(--ease);
   }
 
-  .lf__where {
-    margin-top: 0.6rem;
+  .lf__count {
+    flex: none;
     color: var(--ink-2);
+    font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
   }
 
   .lf__hp {
@@ -271,78 +350,93 @@ const order = ['tipo', 'tamanho', 'faturamento', 'marketing', 'anuncios', 'dores
     overflow: hidden;
   }
 
-  /* Etapa -------------------------------------------------------------------- */
+  /* Corpo ----------------------------------------------------- */
+  .lf__body {
+    flex: 1;
+    padding: 1.25rem var(--side) 1.5rem;
+  }
+
+  /* Perguntas de texto: botão logo abaixo do campo (visível com o teclado aberto) */
+  :global(.js) .lf:not(.is-choice) .lf__body {
+    flex: 0 0 auto;
+    padding-bottom: 0.5rem;
+  }
+
   .st {
     display: grid;
-    gap: 1rem;
+    gap: 0.875rem;
+    align-content: start;
   }
 
   .st fieldset {
     display: grid;
-    gap: 1rem;
+    gap: 0.875rem;
+  }
+
+  /* Com JS: só a primeira etapa aparece até o script assumir (evita salto de layout) */
+  :global(.js) .lf:not(.is-ready) .st + .st {
+    display: none;
   }
 
   :global(html:not(.js)) .st + .st {
-    margin-top: 3rem;
+    margin-top: 2.5rem;
     padding-top: 2rem;
     border-top: 1px solid var(--rule);
   }
 
   :global(.js) .st.is-enter {
-    animation: st-in 0.35s var(--ease) both;
+    animation: st-in 0.2s var(--ease) both;
   }
 
   @keyframes st-in {
     from {
       opacity: 0;
-      transform: translate3d(0, 10px, 0);
+      transform: translate3d(0, 6px, 0);
     }
   }
 
-  .st__n {
-    color: var(--ink-3);
+  .st__group {
+    color: var(--ink-2);
+    font-family: var(--font-mono), monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
   }
 
   .st__q {
     display: block;
-    float: none;
     width: 100%;
     padding: 0;
     font-family: var(--font-display), sans-serif;
-    font-size: clamp(1.5rem, 1.2rem + 1.4vw, 2.25rem);
+    font-size: clamp(1.75rem, 1.35rem + 1.9vw, 2.25rem);
     font-weight: 400;
     line-height: 1.12;
-    letter-spacing: -0.025em;
+    letter-spacing: -0.02em;
     text-wrap: balance;
+    overflow-wrap: break-word;
+  }
+
+  legend.st__q {
+    margin-bottom: 0.25rem;
   }
 
   .st__q:focus {
     outline: none;
   }
 
-  legend.st__q {
-    margin-bottom: 1rem;
-  }
-
   .st__hint {
-    margin-top: -0.25rem;
     color: var(--ink-2);
+    font-size: 1rem;
     line-height: 1.5;
-  }
-
-  .st__row {
-    display: grid;
-    gap: 1rem;
   }
 
   .st__field {
     display: grid;
-    gap: 0.4rem;
-    align-content: start;
+    gap: 0.375rem;
   }
 
   .st__label {
-    font-size: var(--t-small);
+    font-size: 1rem;
     font-weight: 650;
   }
 
@@ -350,7 +444,7 @@ const order = ['tipo', 'tamanho', 'faturamento', 'marketing', 'anuncios', 'dores
     display: flex;
     gap: 0.5rem;
     align-items: flex-start;
-    font-size: var(--t-small);
+    font-size: 0.9375rem;
     font-weight: 650;
     line-height: 1.4;
   }
@@ -360,64 +454,63 @@ const order = ['tipo', 'tamanho', 'faturamento', 'marketing', 'anuncios', 'dores
     flex: none;
     display: grid;
     place-items: center;
-    width: 1.15rem;
-    height: 1.15rem;
-    margin-top: 0.05rem;
-    border-radius: 3px;
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 4px;
     background: var(--ink);
     color: var(--white);
-    font-size: 0.75rem;
+    font-size: 0.8125rem;
     font-weight: 800;
   }
 
-  .st__skip {
+  .st__alt {
     justify-self: start;
-    min-height: 44px;
-    padding: 0;
+    min-height: 48px;
+    padding: 0 0.25rem;
+    margin-left: -0.25rem;
     border: 0;
     background: none;
-    color: var(--ink-2);
-    font-size: var(--t-small);
+    color: var(--ink);
+    font-size: 1rem;
     font-weight: 600;
     text-decoration: underline;
     text-underline-offset: 0.25em;
   }
 
-  .st__kbd {
-    color: var(--ink-3);
-  }
-
-  /* Campos -------------------------------------------------------------------- */
+  /* Campos (sempre ≥ 16px para o iOS não dar zoom) ------------ */
   .in {
     width: 100%;
-    min-height: 3.5rem;
-    padding: 0.8rem 1rem;
-    border: 1.5px solid rgb(17 17 17 / 0.28);
-    border-radius: var(--r-sm);
+    min-height: 56px;
+    padding: 0.875rem 1rem;
+    border: 1.5px solid rgb(17 17 17 / 0.3);
+    border-radius: 12px;
     background: var(--white);
+    color: var(--ink);
     font-size: 1.125rem;
-    line-height: 1.35;
+    line-height: 1.3;
     appearance: none;
     transition: border-color 0.15s var(--ease);
+  }
+
+  .in--big {
+    min-height: 60px;
+    font-size: 1.25rem;
+    letter-spacing: 0.02em;
   }
 
   .in::placeholder {
     color: var(--ink-3);
   }
 
-  .in:hover,
   .in:focus-visible {
     border-color: var(--ink);
-  }
-
-  .in:focus-visible {
-    outline: 3px solid var(--ink);
-    outline-offset: 2px;
+    outline: 3px solid rgb(17 17 17 / 0.18);
+    outline-offset: 0;
   }
 
   .in[aria-invalid='true'] {
     border-color: var(--ink);
-    box-shadow: inset 4px 0 0 var(--ink);
+    border-width: 2px;
   }
 
   .in--select {
@@ -425,15 +518,15 @@ const order = ['tipo', 'tamanho', 'faturamento', 'marketing', 'anuncios', 'dores
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M5 8l5 5 5-5' fill='none' stroke='%23111' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 1rem center;
-    background-size: 1rem;
+    background-size: 1.1rem;
   }
 
   .in--area {
-    min-height: 8rem;
+    min-height: 9rem;
     resize: vertical;
   }
 
-  /* Opções ------------------------------------------------------------------ */
+  /* Alternativas: linha inteira clicável, ≥ 56px -------------- */
   .opts {
     display: grid;
     gap: 0.5rem;
@@ -444,19 +537,22 @@ const order = ['tipo', 'tamanho', 'faturamento', 'marketing', 'anuncios', 'dores
     display: flex;
     align-items: center;
     gap: 0.875rem;
-    min-height: 3.5rem;
-    padding: 0.75rem 1rem;
-    border: 1.5px solid rgb(17 17 17 / 0.16);
-    border-radius: var(--r-sm);
+    min-height: 56px;
+    padding: 0.875rem 1rem;
+    border: 1.5px solid rgb(17 17 17 / 0.18);
+    border-radius: 12px;
     background: var(--white);
-    font-weight: 560;
+    font-size: 1.0625rem;
+    font-weight: 550;
     line-height: 1.3;
     cursor: pointer;
-    transition:
-      border-color 0.15s var(--ease),
-      background-color 0.15s var(--ease),
-      color 0.15s var(--ease);
+    touch-action: manipulation;
+    user-select: none;
     -webkit-tap-highlight-color: transparent;
+    transition:
+      border-color 0.12s var(--ease),
+      background-color 0.12s var(--ease),
+      color 0.12s var(--ease);
   }
 
   .opt input {
@@ -467,49 +563,54 @@ const order = ['tipo', 'tamanho', 'faturamento', 'marketing', 'anuncios', 'dores
     pointer-events: none;
   }
 
-  .opt__key {
-    flex: none;
-    display: none;
-    place-items: center;
-    width: 1.5rem;
-    height: 1.5rem;
-    border: 1px solid currentColor;
-    border-radius: 4px;
-    font-size: 0.6875rem;
-    opacity: 0.55;
-  }
-
   .opt__text {
     flex: 1;
+    min-width: 0;
+    overflow-wrap: break-word;
   }
 
   .opt__mark {
     flex: none;
-    width: 1.25rem;
-    height: 1.25rem;
-    border: 1.5px solid currentColor;
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    border: 2px solid rgb(17 17 17 / 0.45);
     border-radius: 50%;
-    opacity: 0.5;
   }
 
   .opt--multi .opt__mark {
-    border-radius: 4px;
+    border-radius: 6px;
   }
 
-  .opt:hover {
-    border-color: var(--ink);
+  .opt__key {
+    display: none;
+    flex: none;
+    place-items: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border: 1px solid currentColor;
+    border-radius: 5px;
+    font-family: var(--font-mono), monospace;
+    font-size: 0.6875rem;
+    opacity: 0.45;
   }
 
+  .opt:active {
+    background: var(--mist);
+  }
+
+  /* Selecionado: fundo, borda, check e peso mudam juntos */
   .opt:has(input:checked) {
     border-color: var(--ink);
     background: var(--ink);
     color: var(--white);
+    font-weight: 700;
   }
 
   .opt:has(input:checked) .opt__mark {
-    opacity: 1;
-    background: var(--white) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.3 5 8.7l4.5-5.2' fill='none' stroke='%23111' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 0.8rem no-repeat;
     border-color: var(--white);
+    background: var(--white) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.3 5 8.7l4.5-5.2' fill='none' stroke='%23111' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 14px no-repeat;
   }
 
   .opt:has(input:focus-visible) {
@@ -517,22 +618,29 @@ const order = ['tipo', 'tamanho', 'faturamento', 'marketing', 'anuncios', 'dores
     outline-offset: 2px;
   }
 
-  @media (pointer: fine) {
+  @media (hover: hover) and (pointer: fine) {
+    .opt:hover {
+      border-color: var(--ink);
+    }
+
     .opt__key {
       display: grid;
     }
   }
 
-  /* LGPD -------------------------------------------------------------------- */
+  /* LGPD: caixa inteira tocável -------------------------------- */
   .consent {
     display: flex;
     align-items: flex-start;
     gap: 0.875rem;
-    padding: 1rem 1.1rem;
-    border: 1.5px solid rgb(17 17 17 / 0.16);
-    border-radius: var(--r-sm);
+    min-height: 56px;
+    padding: 1rem;
+    border: 1.5px solid rgb(17 17 17 / 0.18);
+    border-radius: 12px;
+    font-size: 1rem;
     line-height: 1.5;
     cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
   }
 
   .consent input {
@@ -544,11 +652,10 @@ const order = ['tipo', 'tamanho', 'faturamento', 'marketing', 'anuncios', 'dores
 
   .consent__box {
     flex: none;
-    width: 1.375rem;
-    height: 1.375rem;
-    margin-top: 0.1rem;
-    border: 1.5px solid var(--ink);
-    border-radius: 4px;
+    width: 26px;
+    height: 26px;
+    border: 2px solid var(--ink);
+    border-radius: 6px;
   }
 
   .consent:has(input:checked) {
@@ -556,7 +663,7 @@ const order = ['tipo', 'tamanho', 'faturamento', 'marketing', 'anuncios', 'dores
   }
 
   .consent:has(input:checked) .consent__box {
-    background: var(--ink) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.3 5 8.7l4.5-5.2' fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 0.85rem no-repeat;
+    background: var(--ink) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.3 5 8.7l4.5-5.2' fill='none' stroke='%23fff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 16px no-repeat;
   }
 
   .consent:has(input:focus-visible) {
@@ -565,26 +672,29 @@ const order = ['tipo', 'tamanho', 'faturamento', 'marketing', 'anuncios', 'dores
   }
 
   .consent a {
-    font-weight: 650;
+    display: inline-block;
+    padding-block: 0.15rem;
+    font-weight: 700;
+    text-underline-offset: 0.2em;
   }
 
-  /* Revisão ------------------------------------------------------------------- */
+  /* Revisão ---------------------------------------------------- */
   .review {
     border-top: 1px solid var(--rule);
   }
 
   .review div {
     display: grid;
-    grid-template-columns: 7rem 1fr auto;
-    gap: 0.75rem;
-    align-items: baseline;
-    padding-block: 0.8rem;
+    grid-template-columns: 4.75rem minmax(0, 1fr) auto;
+    gap: 0.5rem;
+    align-items: center;
+    min-height: 56px;
     border-bottom: 1px solid var(--rule);
   }
 
   .review dt {
     color: var(--ink-2);
-    font-size: var(--t-small);
+    font-size: 0.9375rem;
   }
 
   .review dd {
@@ -592,27 +702,106 @@ const order = ['tipo', 'tamanho', 'faturamento', 'marketing', 'anuncios', 'dores
     overflow-wrap: anywhere;
   }
 
+  .review dd[data-show='whatsapp'] {
+    white-space: nowrap;
+  }
+
   .review button {
+    min-width: 44px;
     min-height: 44px;
-    padding: 0;
+    padding: 0 0.25rem;
     border: 0;
     background: none;
-    font-size: var(--t-small);
+    font-size: 0.9375rem;
     font-weight: 600;
     text-decoration: underline;
     text-underline-offset: 0.2em;
   }
 
-  .lf__submit {
-    margin-top: 0.5rem;
-    min-height: 3.75rem;
-    white-space: normal;
+  /* Ações: no fim do fluxo; fixas embaixo só nas telas de escolha
+     (sem teclado aberto), com safe-area do iPhone -------------- */
+  .lf__actions {
+    padding: 0.75rem var(--side) calc(1rem + env(safe-area-inset-bottom));
+    background: var(--white);
+  }
+
+  :global(.js) .lf.is-choice .lf__actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    box-shadow: 0 -1px 0 var(--rule);
+  }
+
+  .lf__buttons {
+    display: flex;
+    gap: 0.75rem;
+  }
+
+  .lf__btn {
+    display: inline-flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    gap: 0.625rem;
+    min-height: 56px;
+    padding: 0 1.25rem;
+    border: 0;
+    border-radius: 12px;
+    background: var(--ink);
+    color: var(--white);
+    font-size: 1.0625rem;
+    font-weight: 700;
+    line-height: 1.2;
+    text-align: center;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+      background-color 0.15s var(--ease),
+      transform 0.1s var(--ease);
+  }
+
+  .lf__btn:active {
+    transform: scale(0.99);
+    background: var(--graphite);
+  }
+
+  .lf__btn svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .lf__btn[disabled] {
+    opacity: 0.65;
+    cursor: progress;
+  }
+
+  .lf__back-text {
+    display: none;
+    min-height: 56px;
+    padding: 0 1.25rem;
+    border: 1.5px solid rgb(17 17 17 / 0.18);
+    border-radius: 12px;
+    background: var(--white);
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  :global(.js) .lf .lf__submit {
+    display: none;
+  }
+
+  :global(.js) .lf.is-last .lf__submit {
+    display: inline-flex;
+  }
+
+  :global(.js) .lf.is-last [data-next] {
+    display: none;
   }
 
   .lf__spin {
     display: none;
-    width: 1.1rem;
-    height: 1.1rem;
+    width: 18px;
+    height: 18px;
     border: 2px solid currentColor;
     border-right-color: transparent;
     border-radius: 50%;
@@ -630,12 +819,13 @@ const order = ['tipo', 'tamanho', 'faturamento', 'marketing', 'anuncios', 'dores
   }
 
   .lf__status {
-    padding: 1rem 1.1rem;
-    border-radius: var(--r-sm);
+    margin-bottom: 0.75rem;
+    padding: 0.875rem 1rem;
+    border-radius: 12px;
     background: var(--ink);
     color: var(--white);
-    font-size: var(--t-small);
-    line-height: 1.5;
+    font-size: 0.9375rem;
+    line-height: 1.45;
   }
 
   .lf__status[data-kind='success'] {
@@ -643,62 +833,42 @@ const order = ['tipo', 'tamanho', 'faturamento', 'marketing', 'anuncios', 'dores
     color: var(--ink);
   }
 
-  /* Navegação ---------------------------------------------------------------- */
-  .lf__nav {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    margin-top: 2rem;
-  }
-
-  .lf__back {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    min-height: 44px;
-    padding: 0 0.25rem 0 0;
-    border: 0;
-    background: none;
-    font-weight: 600;
-  }
-
-  .lf__back svg {
-    width: 1rem;
-    height: 1rem;
-  }
-
   .lf__enter {
     display: none;
-    margin-left: auto;
+    margin-top: 0.5rem;
     color: var(--ink-3);
+    font-size: 0.8125rem;
+    text-align: center;
   }
 
-  .lf__next {
-    margin-left: auto;
-  }
-
-  :global(.js) .lf.is-first .lf__back {
-    visibility: hidden;
-  }
-
-  :global(.js) .lf.is-last .lf__next,
-  :global(.js) .lf.is-last .lf__enter {
-    display: none;
-  }
-
-  @media (pointer: fine) {
+  /* Adaptação desktop ------------------------------------------ */
+  @media (hover: hover) and (pointer: fine) {
     .lf__enter {
       display: block;
     }
 
-    .lf__next {
-      margin-left: 0;
+    :global(.js) .lf.is-last .lf__enter {
+      display: none;
     }
   }
 
-  @media (min-width: 40rem) {
-    .st__row {
-      grid-template-columns: 1.4fr 1fr;
+  @media (min-width: 48rem) {
+    .lf__body {
+      padding-top: 3rem;
+    }
+
+    .lf__back-text {
+      display: inline-flex;
+      align-items: center;
+    }
+
+    :global(.js) .lf.is-first .lf__back-text {
+      display: none;
+    }
+
+    :global(.js) .lf.is-choice .lf__actions {
+      position: static;
+      box-shadow: none;
     }
   }
 </style>
