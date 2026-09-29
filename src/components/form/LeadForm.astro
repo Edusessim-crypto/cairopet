@@ -3,7 +3,7 @@
  * Formulário CairoPet — produto mobile. Uma pergunta por tela, na ordem oficial.
  *
  * Estrutura de cada tela (celular primeiro):
- *   barra superior (voltar 44px · logo · fechar) + progresso fino "5 de 18"
+ *   barra superior (voltar 44px · logo · fechar) + progresso fino "5 de 17"
  *   grupo da etapa · pergunta · explicação curta · resposta
  *   botão principal de largura total, no alcance do polegar
  *
@@ -70,7 +70,7 @@ const choices: Choice[] = [
   },
 ];
 
-const TOTAL = 18;
+const TOTAL = 17;
 const arrow = 'M2.5 8h10M8.5 3.5 13 8l-4.5 4.5';
 ---
 
@@ -209,17 +209,6 @@ const arrow = 'M2.5 8h10M8.5 3.5 13 8l-4.5 4.5';
       <p class="st__err" id="e-consentimento" data-err="consentimento" hidden></p>
     </section>
 
-    <!-- 18 · Envio -->
-    <section class="st" data-step="envio" data-label="Envio" data-kind="choice">
-      <p class="st__group">{G.fim}</p>
-      <h2 class="st__q">Tudo certo? É só enviar.</h2>
-      <dl class="review" data-js-only>
-        <div><dt>Nome</dt><dd data-show="nome"></dd><button type="button" data-goto="nome" aria-label="Alterar nome">Alterar</button></div>
-        <div><dt>WhatsApp</dt><dd data-show="whatsapp"></dd><button type="button" data-goto="whatsapp" aria-label="Alterar WhatsApp">Alterar</button></div>
-        <div><dt>Loja</dt><dd data-show="loja"></dd><button type="button" data-goto="loja" aria-label="Alterar nome da loja">Alterar</button></div>
-        <div><dt>Cidade</dt><dd data-show="cidade_uf"></dd><button type="button" data-goto="cidade" aria-label="Alterar cidade">Alterar</button></div>
-      </dl>
-    </section>
   </div>
 
   <div class="lf__actions">
@@ -232,7 +221,7 @@ const arrow = 'M2.5 8h10M8.5 3.5 13 8l-4.5 4.5';
       </button>
       <button type="submit" class="lf__btn lf__submit" data-submit>
         <span class="lf__spin" aria-hidden="true"></span>
-        <span data-submit-label>Enviar minha agropecuária</span>
+        <span data-submit-label>Enviar minha agropecuária para análise</span>
       </button>
     </div>
     <p class="lf__enter" aria-hidden="true" data-js-only>ou pressione Enter ↵</p>
@@ -678,45 +667,6 @@ const arrow = 'M2.5 8h10M8.5 3.5 13 8l-4.5 4.5';
     text-underline-offset: 0.2em;
   }
 
-  /* Revisão ---------------------------------------------------- */
-  .review {
-    border-top: 1px solid var(--rule);
-  }
-
-  .review div {
-    display: grid;
-    grid-template-columns: 4.75rem minmax(0, 1fr) auto;
-    gap: 0.5rem;
-    align-items: center;
-    min-height: 56px;
-    border-bottom: 1px solid var(--rule);
-  }
-
-  .review dt {
-    color: var(--ink-2);
-    font-size: 0.9375rem;
-  }
-
-  .review dd {
-    font-weight: 650;
-    overflow-wrap: anywhere;
-  }
-
-  .review dd[data-show='whatsapp'] {
-    white-space: nowrap;
-  }
-
-  .review button {
-    min-width: 44px;
-    min-height: 44px;
-    padding: 0 0.25rem;
-    border: 0;
-    background: none;
-    font-size: 0.9375rem;
-    font-weight: 600;
-    text-decoration: underline;
-    text-underline-offset: 0.2em;
-  }
 
   /* Ações: no fim do fluxo; fixas embaixo só nas telas de escolha
      (sem teclado aberto), com safe-area do iPhone -------------- */

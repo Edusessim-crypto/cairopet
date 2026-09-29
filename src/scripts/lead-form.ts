@@ -24,7 +24,6 @@ import { track } from './tracking';
 const DRAFT_KEY = 'cp_lead_draft_v3';
 const DRAFT_TTL = 24 * 60 * 60 * 1000;
 const PENDING_KEY = 'cp_lead_pending';
-const NAME_KEY = 'cp_lead_nome';
 const SITUATIONS_KEY = 'cp_situacoes';
 const NOT_SAVED = new Set(['website', 'consentimento']);
 
@@ -47,7 +46,6 @@ const STEP_FIELDS: Record<string, (keyof Lead)[]> = {
   investimento: ['faixa_investimento'],
   contexto: [],
   lgpd: ['consentimento'],
-  envio: [],
 };
 
 const timeout = (ms: number) => ('timeout' in AbortSignal ? AbortSignal.timeout(ms) : undefined);
@@ -146,13 +144,6 @@ export function initLeadForm() {
     form.querySelectorAll<HTMLElement>('[data-greet]').forEach((n) => (n.hidden = !nome));
     form.querySelectorAll<HTMLElement>('[data-fill="cidade"]').forEach((n) => (n.textContent = lead.cidade));
     form.querySelectorAll<HTMLElement>('[data-when="cidade"]').forEach((n) => (n.hidden = !lead.cidade));
-    const show: Record<string, string> = {
-      nome: lead.nome,
-      whatsapp: formatWhatsapp(lead.whatsapp),
-      loja: lead.loja,
-      cidade_uf: lead.cidade && lead.uf ? `${lead.cidade} · ${lead.uf}` : lead.cidade,
-    };
-    form.querySelectorAll<HTMLElement>('[data-show]').forEach((n) => (n.textContent = show[n.dataset.show!] || '—'));
   }
 
   /* Teclado aberto: manter campo e botão visíveis --------------------------- */
@@ -263,9 +254,6 @@ export function initLeadForm() {
     track('form_step', { step: index + 1, step_name: 'instagram', skipped: true });
     forward(index + 1);
   });
-  form.querySelectorAll<HTMLButtonElement>('[data-goto]').forEach((b) =>
-    b.addEventListener('click', () => forward(steps.findIndex((s) => s.dataset.step === b.dataset.goto))),
-  );
 
   // Enter / "Próximo" do teclado: vai ao próximo campo vazio da etapa ou avança.
   // No computador, 1–9 escolhe opção.
@@ -432,7 +420,7 @@ export function initLeadForm() {
     btnSubmit.disabled = on;
     backButtons.forEach((b) => (b.disabled = on));
     btnSubmit.toggleAttribute('data-loading', on);
-    submitLabel.textContent = on ? 'Enviando...' : 'Enviar minha agropecuária';
+    submitLabel.textContent = on ? 'Enviando...' : 'Enviar minha agropecuária para análise';
   }
 
   const stepWithError = (errors: LeadErrors) =>
@@ -481,7 +469,6 @@ export function initLeadForm() {
       clearTimeout(timer);
       draftStore?.removeItem(DRAFT_KEY);
       session?.setItem(PENDING_KEY, eventId);
-      session?.setItem(NAME_KEY, lead.nome);
       try {
         localStorage.removeItem(SITUATIONS_KEY);
       } catch {

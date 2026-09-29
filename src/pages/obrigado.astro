@@ -11,15 +11,9 @@ import { CALENDLY_URL } from '../lib/site';
     </header>
 
     <div class="ok__body">
-      <p class="ok__tag">
-        <span class="ok__check" aria-hidden="true">
-          <svg viewBox="0 0 12 12"><path d="M2.5 6.3 5 8.7l4.5-5.2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
-        </span>
-        CairoPet · Etapa concluída
-      </p>
-      <h1 class="ok__title">Recebemos sua agropecuária<span data-ty-name></span>.</h1>
+      <h1 class="ok__title">Recebemos sua agropecuária.</h1>
       <p class="ok__text">
-        Suas informações foram enviadas. Agora escolha o melhor horário para conversar com a CairoPet.
+        Suas informações foram enviadas com sucesso. Agora escolha o melhor horário para conversarmos sobre sua loja.
       </p>
 
       <a class="ok__btn" href={CALENDLY_URL} data-calendly data-cta="obrigado-calendly">
@@ -27,11 +21,6 @@ import { CALENDLY_URL } from '../lib/site';
         <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2.5 8h10M8.5 3.5 13 8l-4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
       </a>
       <p class="ok__hint">Escolha o melhor dia e horário para você.</p>
-
-      <p class="ok__later">
-        Prefere agendar depois? Tudo bem: sua agropecuária já está com a gente. Se houver compatibilidade, entramos em
-        contato pelo WhatsApp que você informou.
-      </p>
     </div>
   </main>
 </BaseLayout>
@@ -42,12 +31,6 @@ import { CALENDLY_URL } from '../lib/site';
 
   // Lead só dispara vindo de envio confirmado pelo servidor (mesmo event_id da CAPI).
   const id = new URLSearchParams(location.search).get('lead');
-  let nome = '';
-  try {
-    nome = sessionStorage.getItem('cp_lead_nome') ?? '';
-  } catch {
-    /* ignora */
-  }
   if (id && /^[\w-]{8,64}$/.test(id)) {
     let valid = true;
     try {
@@ -60,15 +43,10 @@ import { CALENDLY_URL } from '../lib/site';
     history.replaceState(null, '', location.pathname);
   }
 
-  const first = nome.trim().split(/\s+/)[0];
-  const slot = document.querySelector('[data-ty-name]');
-  if (first && slot) slot.textContent = `, ${first}`;
-
-  // Calendly na mesma aba, com nome e UTMs pré-preenchidos.
+  // Calendly na mesma aba, só ao toque do usuário, com as UTMs da campanha.
   const cal = document.querySelector<HTMLAnchorElement>('[data-calendly]');
   if (cal) {
     const url = new URL(cal.href);
-    if (nome) url.searchParams.set('name', nome);
     const attr = getAttribution();
     for (const k of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term']) if (attr[k]) url.searchParams.set(k, attr[k]);
     cal.href = url.toString();
@@ -106,31 +84,6 @@ import { CALENDLY_URL } from '../lib/site';
     padding-top: clamp(1.5rem, 8vh, 4rem);
   }
 
-  .ok__tag {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: var(--ink-2);
-    font-family: var(--font-mono), monospace;
-    font-size: 0.75rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  .ok__check {
-    display: grid;
-    place-items: center;
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    background: var(--ink);
-    color: var(--white);
-  }
-
-  .ok__check svg {
-    width: 12px;
-    height: 12px;
-  }
 
   .ok__title {
     font-family: var(--font-display), sans-serif;
@@ -180,12 +133,4 @@ import { CALENDLY_URL } from '../lib/site';
     text-align: center;
   }
 
-  .ok__later {
-    margin-top: 1.5rem;
-    padding-top: 1.25rem;
-    border-top: 1px solid var(--rule);
-    color: var(--ink-3);
-    font-size: 0.875rem;
-    line-height: 1.5;
-  }
 </style>
