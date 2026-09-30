@@ -88,6 +88,7 @@ export default defineConfig({
       // Públicas (vão para o navegador) ------------------------------------
       PUBLIC_META_PIXEL_ID: envField.string({ context: 'client', access: 'public', optional: true }),
       PUBLIC_GA4_ID: envField.string({ context: 'client', access: 'public', optional: true }),
+      PUBLIC_GTM_ID: envField.string({ context: 'client', access: 'public', optional: true }),
       PUBLIC_INSTAGRAM_URL: envField.string({ context: 'client', access: 'public', optional: true }),
       PUBLIC_WHATSAPP_NUMBER: envField.string({ context: 'client', access: 'public', optional: true }),
       PUBLIC_CONTACT_EMAIL: envField.string({ context: 'client', access: 'public', optional: true }),

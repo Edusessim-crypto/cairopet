@@ -1,6 +1,7 @@
 import {
   PUBLIC_CALENDLY_URL,
   PUBLIC_CONTACT_EMAIL,
+  PUBLIC_GTM_ID,
   PUBLIC_COMPANY_CNPJ,
   PUBLIC_COMPANY_LEGAL_NAME,
   PUBLIC_INSTAGRAM_URL,
@@ -28,6 +29,9 @@ export const NAV = [
   { label: 'Resultado', href: '/#resultado' },
   { label: 'Perguntas', href: '/#perguntas' },
 ] as const;
+
+/** Google Tag Manager (container da CairoPet). Pode ser trocado por PUBLIC_GTM_ID. */
+export const GTM_ID = (PUBLIC_GTM_ID || 'GTM-MQPCCFFG').trim();
 
 /** Agendamento do briefing (depois do lead salvo). */
 export const CALENDLY_URL = PUBLIC_CALENDLY_URL || 'https://calendly.com/cairopet/briefing-cairopet';

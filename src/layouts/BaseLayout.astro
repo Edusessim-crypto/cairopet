@@ -1,7 +1,7 @@
 ---
 import { Font } from 'astro:assets';
 import '../styles/global.css';
-import { SITE } from '../lib/site';
+import { GTM_ID, SITE } from '../lib/site';
 
 interface Props {
   title?: string;
@@ -21,6 +21,21 @@ const ogImage = new URL(SITE.ogImage, Astro.site).href;
 <html lang="pt-BR">
   <head>
     <meta charset="utf-8" />
+    {
+      GTM_ID && (
+        <Fragment>
+          <!-- Google Tag Manager -->
+          <script is:inline define:vars={{ gtmId: GTM_ID }}>
+            (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+            new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+            j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+            'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+            })(window,document,'script','dataLayer',gtmId);
+          </script>
+          <!-- End Google Tag Manager -->
+        </Fragment>
+      )
+    }
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <script is:inline>document.documentElement.classList.add('js');</script>
     <title>{title}</title>
@@ -57,6 +72,13 @@ const ogImage = new URL(SITE.ogImage, Astro.site).href;
     {jsonLd.map((data) => <script is:inline type="application/ld+json" set:html={JSON.stringify(data)} />)}
   </head>
   <body class={bodyClass}>
+    {
+      GTM_ID && (
+        <noscript>
+          <iframe src={`https://www.googletagmanager.com/ns.html?id=${GTM_ID}`} height="0" width="0" style="display:none;visibility:hidden" title="Google Tag Manager"></iframe>
+        </noscript>
+      )
+    }
     <slot />
     <script>
       import { captureAttribution } from '../scripts/attribution';

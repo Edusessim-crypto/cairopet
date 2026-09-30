@@ -6,7 +6,8 @@
  *  1 Nome · 2 WhatsApp · 3 Instagram · 4 Cidade + Estado · 5 Nome da agropecuária
  *  6 Tipo de negócio · 7 Tamanho da operação · 8 Faturamento · 9 Marketing atual
  *  10 Investimento em anúncios · 11 Dores · 12 Objetivo · 13 Momento de contratação
- *  14 Decisor · 15 Faixa de investimento · 16 Contexto adicional · 17 LGPD · 18 Envio
+ *  14 Decisor · 15 Faixa de investimento · 16 LGPD (com o envio)
+ *  (Contexto adicional e tela de revisão removidos a pedido da CairoPet.)
  */
 
 export const UFS = [

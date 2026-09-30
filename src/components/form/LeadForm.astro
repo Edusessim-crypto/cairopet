@@ -3,7 +3,7 @@
  * Formulário CairoPet — produto mobile. Uma pergunta por tela, na ordem oficial.
  *
  * Estrutura de cada tela (celular primeiro):
- *   barra superior (voltar 44px · logo · fechar) + progresso fino "5 de 17"
+ *   barra superior (voltar 44px · logo · fechar) + progresso fino "5 de 16"
  *   grupo da etapa · pergunta · explicação curta · resposta
  *   botão principal de largura total, no alcance do polegar
  *
@@ -70,7 +70,7 @@ const choices: Choice[] = [
   },
 ];
 
-const TOTAL = 17;
+const TOTAL = 16;
 const arrow = 'M2.5 8h10M8.5 3.5 13 8l-4.5 4.5';
 ---
 
@@ -186,15 +186,8 @@ const arrow = 'M2.5 8h10M8.5 3.5 13 8l-4.5 4.5';
       ))
     }
 
-    <!-- 16 · Contexto -->
-    <section class="st" data-step="contexto" data-label="Contexto" data-kind="text">
-      <p class="st__group">{G.fim}</p>
-      <label class="st__q" for="f-contexto">Quer contar mais alguma coisa sobre a loja?</label>
-      <p class="st__hint" id="h-contexto">Opcional. Uma promoção que não funcionou, um produto que precisa girar, uma data forte da região…</p>
-      <textarea class="in in--area" id="f-contexto" name="contexto" rows="4" maxlength="1000" inputmode="text" autocapitalize="sentences" aria-describedby="h-contexto"></textarea>
-    </section>
 
-    <!-- 17 · LGPD -->
+    <!-- 16 · LGPD -->
     <section class="st" data-step="lgpd" data-label="Privacidade" data-kind="choice">
       <p class="st__group">{G.fim}</p>
       <h2 class="st__q">Seus dados, do jeito certo.</h2>

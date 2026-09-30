@@ -44,7 +44,6 @@ const STEP_FIELDS: Record<string, (keyof Lead)[]> = {
   momento: ['momento'],
   decisor: ['decisor'],
   investimento: ['faixa_investimento'],
-  contexto: [],
   lgpd: ['consentimento'],
 };
 
