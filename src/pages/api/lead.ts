@@ -91,7 +91,10 @@ async function forwardToWebhook(payload: unknown) {
     data = null;
   }
   if (url.hostname === 'script.google.com' && data?.ok !== true) {
-    throw new Error(`Planilha não confirmou o lead: ${data?.error ?? text.slice(0, 120)}`);
+    // Diagnóstico sem expor a senha: tamanho e pontas do token (JSON mostra caracteres invisíveis).
+    const t = url.searchParams.get('token') ?? '';
+    const hint = t ? `token com ${t.length} caracteres, começa ${JSON.stringify(t.slice(0, 3))}, termina ${JSON.stringify(t.slice(-3))}` : 'URL sem ?token=';
+    throw new Error(`Planilha não confirmou o lead: ${data?.error ?? text.slice(0, 120)} (${hint})`);
   }
   if (data && data.ok === false) throw new Error(`Webhook recusou o lead: ${data.error ?? ''}`);
 }
