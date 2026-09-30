@@ -1,9 +1,12 @@
 import type { APIRoute } from 'astro';
-import { LEAD_WEBHOOK_TOKEN, LEAD_WEBHOOK_URL } from 'astro:env/server';
+import { LEAD_WEBHOOK_TOKEN, LEAD_WEBHOOK_URL as RAW_WEBHOOK_URL } from 'astro:env/server';
 import { formatWhatsapp, normalizeWhatsapp, parseLead, validateLead, type Lead } from '../../lib/lead-schema';
 import { sendLeadToCapi } from '../../lib/meta-capi';
 
 export const prerender = false;
+
+// Ignora espaços/quebras de linha coladas junto com a URL no painel da Vercel.
+const LEAD_WEBHOOK_URL = RAW_WEBHOOK_URL?.trim() || undefined;
 
 const MAX_BODY = 32 * 1024;
 
