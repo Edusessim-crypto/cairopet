@@ -7,7 +7,8 @@
  *   (localStorage por 24h; sem ele, sessionStorage).
  * - Teclado: não abre sozinho no celular; se já estiver aberto, segue para o
  *   próximo campo de texto. Com o teclado aberto, campo e botão ficam visíveis.
- * - O evento Lead só dispara em /obrigado/, depois do servidor confirmar.
+ * - Envio: espera a API confirmar (res.ok) → dispara a conversão (generate_lead/Lead,
+ *   até 2 s) → só então abre /obrigado/. Falhou: fica na página, com o WhatsApp.
  */
 import {
   firstName,
@@ -19,11 +20,10 @@ import {
   type LeadErrors,
 } from '../lib/lead-schema';
 import { getAttribution } from './attribution';
-import { track } from './tracking';
+import { track, trackLead } from './tracking';
 
 const DRAFT_KEY = 'cp_lead_draft_v3';
 const DRAFT_TTL = 24 * 60 * 60 * 1000;
-const PENDING_KEY = 'cp_lead_pending';
 const SITUATIONS_KEY = 'cp_situacoes';
 const NOT_SAVED = new Set(['website', 'consentimento']);
 
@@ -71,7 +71,6 @@ export function initLeadForm() {
   if (!found) return;
   const form: HTMLFormElement = found;
   const draftStore = storage('localStorage') ?? storage('sessionStorage');
-  const session = storage('sessionStorage');
   const touch = matchMedia('(pointer: coarse)').matches;
 
   const steps = [...form.querySelectorAll<HTMLElement>('[data-step]')];
@@ -409,9 +408,18 @@ export function initLeadForm() {
   }
 
   /* Envio ---------------------------------------------------------------- */
-  function setStatus(kind: 'error' | 'success', html: string) {
+  const statusText = $<HTMLElement>('[data-status-text]');
+  const statusWa = $<HTMLAnchorElement>('[data-status-wa]');
+  // Celular: abre direto no app do WhatsApp (mesma aba). Computador: nova aba.
+  if (touch) statusWa.removeAttribute('target');
+
+  const SEND_ERROR =
+    '<strong>Não conseguimos enviar seus dados.</strong> Tente novamente ou fale com a gente pelo WhatsApp.';
+
+  function setStatus(kind: 'error' | 'success', html: string, whatsapp = false) {
     status.dataset.kind = kind;
-    status.innerHTML = html;
+    statusText.innerHTML = html;
+    statusWa.hidden = !whatsapp;
     status.hidden = false;
   }
 
@@ -420,6 +428,13 @@ export function initLeadForm() {
     backButtons.forEach((b) => (b.disabled = on));
     btnSubmit.toggleAttribute('data-loading', on);
     submitLabel.textContent = on ? 'Enviando...' : 'Enviar minha agropecuária para análise';
+  }
+
+  /** Falha: fica na página, mantém as respostas, libera o botão e oferece o WhatsApp. */
+  function sendFailed() {
+    sending = false;
+    loading(false);
+    setStatus('error', SEND_ERROR, true);
   }
 
   const stepWithError = (errors: LeadErrors) =>
@@ -437,56 +452,65 @@ export function initLeadForm() {
       return;
     }
 
+    // Botão desabilitado já no clique, antes de qualquer espera.
     sending = true;
     loading(true);
     status.hidden = true;
     const eventId = uuid();
     track('form_submit', { step: total });
 
+    let res: Response;
+    let data: { ok?: boolean; errors?: LeadErrors } = {};
     try {
-      const res = await fetch(form.action, {
+      // keepalive: a requisição termina mesmo se a pessoa fechar ou trocar de página.
+      res = await fetch(form.action, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify({ ...raw(), tracking: { ...getAttribution(), event_id: eventId } }),
+        keepalive: true,
         signal: timeout(20000),
       });
-      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; errors?: LeadErrors };
-      if (res.status === 422 && data.errors) {
-        sending = false;
-        loading(false);
-        const i = stepWithError(data.errors);
-        if (i !== -1) {
-          forward(i);
-          showErrors(data.errors, STEP_FIELDS[steps[i].dataset.step ?? '']);
-        }
-        return;
-      }
-      if (res.status === 503) {
-        sending = false;
-        loading(false);
-        setStatus('error', '<strong>O envio está temporariamente indisponível.</strong> Suas respostas continuam aqui. Tente de novo em alguns minutos.');
-        return;
-      }
-      if (!res.ok || !data.ok) throw new Error(`HTTP ${res.status}`);
-
-      // Lead salvo no servidor. Só agora vai para a confirmação (onde o evento Lead dispara).
-      finished = true;
-      clearTimeout(timer);
-      draftStore?.removeItem(DRAFT_KEY);
-      session?.setItem(PENDING_KEY, eventId);
-      try {
-        localStorage.removeItem(SITUATIONS_KEY);
-      } catch {
-        /* ignora */
-      }
-      submitLabel.textContent = 'Enviado';
-      btnSubmit.removeAttribute('data-loading');
-      location.replace(`/obrigado/?lead=${encodeURIComponent(eventId)}`);
+      data = (await res.json().catch(() => ({}))) as typeof data;
     } catch {
+      sendFailed();
+      return;
+    }
+
+    // Validação recusada no servidor: volta para a pergunta com problema, respostas mantidas.
+    if (res.status === 422 && data.errors) {
       sending = false;
       loading(false);
-      setStatus('error', '<strong>Não conseguimos enviar agora.</strong> Suas respostas continuam aqui. Confira a internet e toque em enviar de novo.');
+      const i = stepWithError(data.errors);
+      if (i !== -1) {
+        forward(i);
+        showErrors(data.errors, STEP_FIELDS[steps[i].dataset.step ?? '']);
+      } else {
+        setStatus('error', SEND_ERROR, true);
+      }
+      return;
     }
+
+    // Lead só é considerado enviado com res.ok (o servidor só responde ok depois de salvar).
+    if (!res.ok || data.ok !== true) {
+      sendFailed();
+      return;
+    }
+
+    // Salvo. Limpa o rascunho para não haver segundo envio acidental.
+    finished = true;
+    clearTimeout(timer);
+    draftStore?.removeItem(DRAFT_KEY);
+    try {
+      localStorage.removeItem(SITUATIONS_KEY);
+    } catch {
+      /* ignora */
+    }
+    btnSubmit.removeAttribute('data-loading');
+    submitLabel.textContent = 'Enviado';
+
+    // Conversão (GA4 generate_lead + Meta Lead) e só depois a página de obrigado.
+    await trackLead(eventId);
+    location.replace('/obrigado/');
   });
 
   /* Início --------------------------------------------------------------- */
@@ -498,11 +522,7 @@ export function initLeadForm() {
   const erro = new URLSearchParams(location.search).get('erro');
   if (erro) {
     show(total - 1, false);
-    setStatus(
-      'error',
-      erro === 'formulario'
-        ? '<strong>Faltou alguma informação.</strong> Confira as respostas e envie de novo.'
-        : '<strong>Não conseguimos registrar seu envio.</strong> Tente de novo em instantes.',
-    );
+    if (erro === 'formulario') setStatus('error', '<strong>Faltou alguma informação.</strong> Confira as respostas e envie de novo.');
+    else setStatus('error', SEND_ERROR, true);
   }
 }

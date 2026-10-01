@@ -14,6 +14,11 @@
   --mist: #e8e8e8;
   --graphite: #262626;
 
+  /* Exceção aprovada (30/09/2026): verde oficial do WhatsApp, só nos botões de WhatsApp.
+     Texto/ícone em #111 (contraste 9,5:1; branco daria 2:1). */
+  --whatsapp: #25d366;
+  --whatsapp-press: #1ebe5d;
+
   /* Derivados funcionais do #111111 (texto secundário e fios) */
   --ink-2: rgb(17 17 17 / 0.7);
   --ink-3: rgb(17 17 17 / 0.5);

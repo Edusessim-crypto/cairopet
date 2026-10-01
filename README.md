@@ -6,11 +6,11 @@ Objetivo único: o dono da agropecuária preencher o formulário **"Minha cidade
 **Stack:** Astro 7 (HTML estático, ~17 KB de JS, sem framework) + 1 rota de servidor (`/api/lead`) na Vercel.
 Lighthouse (build de produção): mobile 98 · acessibilidade 100 · boas práticas 100 · SEO 100 (desktop 100 em tudo).
 
-**Páginas:** `/` (landing, 8 seções) · `/formulario/` (18 etapas, uma pergunta por tela, na ordem oficial) · `/obrigado/` (confirmação + convite ao briefing no Calendly) · `/politica-de-privacidade/`.
+**Páginas:** `/` (landing, 8 seções) · `/formulario/` (16 etapas, uma pergunta por tela) · `/obrigado/` (confirmação + botão para falar no WhatsApp) · `/politica-de-privacidade/`.
 
 **Conceito visual — "Os objetos do balcão":** etiqueta de gôndola (a loja tem estoque, preço, equipe; falta movimento), cupom (a prova do case AgroUnião) e carimbo com o símbolo oficial ("uma agropecuária por cidade").
 
-**Fluxo:** formulário = captura e qualificação; o lead é salvo (webhook) antes de ir para `/obrigado/`. Calendly = agendamento opcional (`PUBLIC_CALENDLY_URL`, padrão `https://calendly.com/cairopet/briefing-cairopet`, com nome e UTMs pré-preenchidos). As situações marcadas na home chegam pré-marcadas na etapa "Dores".
+**Fluxo de envio (não alterar sem motivo):** enviar → botão desabilitado → `fetch` POST com `keepalive` → espera a API (`res.ok`, que só vem depois de a planilha confirmar) → conversão `lead` (GA4 `generate_lead` + Meta `Lead`, aguardada por `eventCallback` até 2 s) → `/obrigado/` → WhatsApp `5551995757018` com mensagem pronta. Se falhar: fica no formulário, respostas mantidas, botão liberado, mensagem de erro + botão do WhatsApp. As situações marcadas na home chegam pré-marcadas na etapa "Dores".
 
 ```bash
 npm install

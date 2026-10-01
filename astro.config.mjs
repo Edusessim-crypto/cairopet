@@ -92,7 +92,6 @@ export default defineConfig({
       PUBLIC_INSTAGRAM_URL: envField.string({ context: 'client', access: 'public', optional: true }),
       PUBLIC_WHATSAPP_NUMBER: envField.string({ context: 'client', access: 'public', optional: true }),
       PUBLIC_CONTACT_EMAIL: envField.string({ context: 'client', access: 'public', optional: true }),
-      PUBLIC_CALENDLY_URL: envField.string({ context: 'client', access: 'public', optional: true }),
       PUBLIC_COMPANY_LEGAL_NAME: envField.string({ context: 'client', access: 'public', optional: true }),
       PUBLIC_COMPANY_CNPJ: envField.string({ context: 'client', access: 'public', optional: true }),
       // Secretas (somente servidor) -----------------------------------------

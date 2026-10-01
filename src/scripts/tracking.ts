@@ -39,6 +39,16 @@ function whenIdle(fn: () => void) {
   else addEventListener('load', run, { once: true });
 }
 
+/*
+ * Pixel/GA4 só recebem chamadas diretas quando o próprio site os carregou
+ * (PUBLIC_META_PIXEL_ID / PUBLIC_GA4_ID). Quando vêm pelo GTM, o site só
+ * alimenta o dataLayer — senão cada evento seria enviado duas vezes.
+ */
+let ownPixel = false;
+let ownGa4 = false;
+const sitePixel = () => (ownPixel ? window.fbq : undefined);
+const siteGtag = () => (ownGa4 ? window.gtag : undefined);
+
 export function initTracking() {
   if (window.__cpTracking) return;
   window.__cpTracking = true;
@@ -46,6 +56,7 @@ export function initTracking() {
 
   const ga4 = PUBLIC_GA4_ID;
   if (ga4) {
+    ownGa4 = true;
     window.gtag = function gtag() {
       // eslint-disable-next-line prefer-rest-params
       window.dataLayer.push(arguments);
@@ -56,6 +67,7 @@ export function initTracking() {
   }
 
   if (PUBLIC_META_PIXEL_ID) {
+    ownPixel = true;
     const fbq = function (...args: unknown[]) {
       if (fbq.callMethod) fbq.callMethod(...args);
       else fbq.queue.push(args);
@@ -76,16 +88,47 @@ export function initTracking() {
 export function track(event: string, params: Params = {}) {
   window.dataLayer = window.dataLayer || [];
   window.dataLayer.push({ event, ...params });
-  window.gtag?.('event', event, params);
-  if (event === 'whatsapp_click') window.fbq?.('track', 'Contact');
+  siteGtag()?.('event', event, params);
+  if (event === 'whatsapp_click') sitePixel()?.('track', 'Contact');
 }
 
-/** Conversão principal. Chamar SOMENTE depois do envio confirmado pelo servidor. */
-export function trackLead(eventId: string, params: Params = {}) {
-  window.dataLayer = window.dataLayer || [];
-  window.dataLayer.push({ event: 'lead', event_id: eventId, ...params });
-  window.gtag?.('event', 'generate_lead', { ...params, event_id: eventId });
-  window.fbq?.('track', 'Lead', { content_name: 'Verificar cidade', ...params }, { eventID: eventId });
+/**
+ * Conversão principal (GA4 `generate_lead` + Meta `Lead`).
+ * Chamar SOMENTE depois de o servidor confirmar que o lead foi salvo.
+ *
+ * Resolve quando o envio da conversão termina — ou em no máximo 2 s
+ * (`event_timeout`), para nunca prender o usuário se o GA4/GTM não responder.
+ * - GA4/Pixel via GTM: o evento `lead` vai ao dataLayer com `eventCallback` +
+ *   `eventTimeout` (equivalente no GTM ao `event_callback`/`event_timeout` do gtag).
+ * - GA4 carregado pelo próprio site: `gtag('event', 'generate_lead', { event_callback, event_timeout })`.
+ * O timer local cobre o caso de o GTM estar bloqueado (aí nenhum callback chega).
+ */
+export function trackLead(eventId: string, params: Params = {}): Promise<void> {
+  const TIMEOUT = 2000;
+  return new Promise((resolve) => {
+    let pending = 1;
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      clearTimeout(guard);
+      resolve();
+    };
+    const oneDone = () => {
+      if (--pending <= 0) finish();
+    };
+    const guard = window.setTimeout(finish, TIMEOUT + 150);
+
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({ event: 'lead', event_id: eventId, ...params, eventCallback: oneDone, eventTimeout: TIMEOUT });
+
+    const gtag = siteGtag();
+    if (gtag) {
+      pending++;
+      gtag('event', 'generate_lead', { ...params, event_id: eventId, event_callback: oneDone, event_timeout: TIMEOUT });
+    }
+    sitePixel()?.('track', 'Lead', { content_name: 'Verificar cidade', ...params }, { eventID: eventId });
+  });
 }
 
 /** Rastreia cliques em CTAs e links de WhatsApp declarados no HTML. */

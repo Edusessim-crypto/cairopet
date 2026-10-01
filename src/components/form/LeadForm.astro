@@ -12,6 +12,8 @@
  * salvo no aparelho, teclado mobile cuidado, envio via fetch → /obrigado/.
  */
 import Logo from '../brand/Logo.astro';
+import WhatsAppIcon from '../WhatsAppIcon.astro';
+import { whatsappLink } from '../../lib/site';
 import {
   DECISOR_OPTIONS,
   DORES_OPTIONS,
@@ -205,7 +207,13 @@ const arrow = 'M2.5 8h10M8.5 3.5 13 8l-4.5 4.5';
   </div>
 
   <div class="lf__actions">
-    <div class="lf__status" data-status role="alert" hidden></div>
+    <div class="lf__status" data-status role="alert" hidden>
+      <p data-status-text></p>
+      <a class="lf__wa" data-status-wa href={whatsappLink()} target="_blank" rel="noopener" data-track="whatsapp" data-location="formulario-erro" hidden>
+        <WhatsAppIcon class="lf__wa-icon" />
+        <span>Falar com a CairoPet no WhatsApp</span>
+      </a>
+    </div>
     <div class="lf__buttons">
       <button type="button" class="lf__back-text" data-back data-js-only>Voltar</button>
       <button type="button" class="lf__btn" data-next data-js-only>
@@ -769,6 +777,40 @@ const arrow = 'M2.5 8h10M8.5 3.5 13 8l-4.5 4.5';
     color: var(--white);
     font-size: 0.9375rem;
     line-height: 1.45;
+  }
+
+  .lf__wa {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 52px;
+    margin-top: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 10px;
+    background: var(--whatsapp);
+    color: var(--ink);
+    font-size: 0.9375rem;
+    font-weight: 700;
+    text-align: center;
+    text-decoration: none;
+    touch-action: manipulation;
+  }
+
+  .lf__wa:hover,
+  .lf__wa:active {
+    background: var(--whatsapp-press);
+  }
+
+  .lf__wa span {
+    text-align: center;
+    text-wrap: balance;
+  }
+
+  .lf__wa :global(.lf__wa-icon) {
+    flex: none;
+    width: 22px;
+    height: 22px;
   }
 
   .lf__status[data-kind='success'] {

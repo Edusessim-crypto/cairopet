@@ -1,56 +1,42 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Logo from '../components/brand/Logo.astro';
-import { CALENDLY_URL } from '../lib/site';
+import WhatsAppIcon from '../components/WhatsAppIcon.astro';
+import { whatsappLink } from '../lib/site';
+
+const WHATSAPP_MSG = 'Olá! Acabei de preencher o formulário da CairoPet e gostaria de saber mais.';
 ---
 
-<BaseLayout title="Recebemos sua agropecuária | CairoPet" noindex>
+<BaseLayout title="Recebemos suas informações | CairoPet" noindex>
   <main class="ok" id="conteudo">
     <header class="ok__top">
       <a href="/" aria-label="CairoPet — página inicial"><Logo variant="black" width={88} loading="eager" alt="" /></a>
     </header>
 
     <div class="ok__body">
-      <h1 class="ok__title">Recebemos sua agropecuária.</h1>
-      <p class="ok__text">
-        Suas informações foram enviadas com sucesso. Agora escolha o melhor horário para conversarmos sobre sua loja.
-      </p>
+      <h1 class="ok__title">Recebemos suas informações!</h1>
+      <p class="ok__text">Agora fale com nosso time pelo WhatsApp para continuarmos.</p>
 
-      <a class="ok__btn" href={CALENDLY_URL} data-calendly data-cta="obrigado-calendly">
-        <span>Agendar meu briefing</span>
-        <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2.5 8h10M8.5 3.5 13 8l-4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      <a
+        class="ok__btn"
+        href={whatsappLink(WHATSAPP_MSG)}
+        target="_blank"
+        rel="noopener"
+        data-whatsapp
+        data-track="whatsapp"
+        data-location="obrigado"
+      >
+        <WhatsAppIcon class="ok__wa-icon" />
+        <span>Falar com a CairoPet no WhatsApp</span>
       </a>
-      <p class="ok__hint">Escolha o melhor dia e horário para você.</p>
     </div>
   </main>
 </BaseLayout>
 
 <script>
-  import { track, trackLead } from '../scripts/tracking';
-  import { getAttribution } from '../scripts/attribution';
-
-  // Lead só dispara vindo de envio confirmado pelo servidor (mesmo event_id da CAPI).
-  const id = new URLSearchParams(location.search).get('lead');
-  if (id && /^[\w-]{8,64}$/.test(id)) {
-    let valid = true;
-    try {
-      valid = sessionStorage.getItem('cp_lead_pending') === id;
-      if (valid) sessionStorage.removeItem('cp_lead_pending');
-    } catch {
-      /* sessão indisponível: confia no parâmetro */
-    }
-    if (valid) trackLead(id);
-    history.replaceState(null, '', location.pathname);
-  }
-
-  // Calendly na mesma aba, só ao toque do usuário, com as UTMs da campanha.
-  const cal = document.querySelector<HTMLAnchorElement>('[data-calendly]');
-  if (cal) {
-    const url = new URL(cal.href);
-    const attr = getAttribution();
-    for (const k of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term']) if (attr[k]) url.searchParams.set(k, attr[k]);
-    cal.href = url.toString();
-    cal.addEventListener('click', () => track('calendly_click', { location: 'obrigado' }));
+  // Celular: abre direto no app do WhatsApp (mesma aba). Computador: nova aba.
+  if (matchMedia('(pointer: coarse)').matches) {
+    document.querySelector('[data-whatsapp]')?.removeAttribute('target');
   }
 </script>
 
@@ -109,28 +95,44 @@ import { CALENDLY_URL } from '../lib/site';
     margin-top: 0.75rem;
     padding: 0 1.25rem;
     border-radius: 12px;
-    background: var(--ink);
-    color: var(--white);
-    font-size: 1.125rem;
+    background: var(--whatsapp);
+    color: var(--ink);
+    font-size: 1rem;
     font-weight: 700;
+    line-height: 1.25;
+    text-align: center;
     text-decoration: none;
     touch-action: manipulation;
   }
 
+  .ok__btn:hover,
   .ok__btn:active {
-    background: var(--graphite);
+    background: var(--whatsapp-press);
   }
 
-  .ok__btn svg {
-    width: 18px;
-    height: 18px;
-  }
-
-  .ok__hint {
-    margin-top: -0.25rem;
-    color: var(--ink-2);
-    font-size: 0.9375rem;
+  .ok__btn span {
     text-align: center;
+    text-wrap: balance;
   }
+
+  @media (max-width: 23.74rem) {
+    .ok__btn {
+      padding-inline: 0.875rem;
+      font-size: 0.9375rem;
+    }
+  }
+
+  @media (min-width: 40rem) {
+    .ok__btn {
+      font-size: 1.125rem;
+    }
+  }
+
+  .ok__btn :global(.ok__wa-icon) {
+    flex: none;
+    width: 24px;
+    height: 24px;
+  }
+
 
 </style>
