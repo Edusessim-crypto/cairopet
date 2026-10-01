@@ -18,7 +18,7 @@ export default defineConfig({
   adapter: vercel(),
   integrations: [
     sitemap({
-      filter: (page) => !page.includes('/obrigado') && !page.includes('/formulario'),
+      filter: (page) => !page.includes('/obrigado') && !page.includes('/formulario') && !page.includes('/apresentacao'),
     }),
   ],
   prefetch: false,

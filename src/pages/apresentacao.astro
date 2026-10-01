@@ -1,0 +1,40 @@
+---
+/**
+ * Apresentação comercial — usada em reuniões (notebook, Meet). Fora do menu,
+ * do sitemap e do Google (noindex). Conteúdo: src/data/presentation.ts.
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Deck from '../components/presentation/Deck.astro';
+import PlanDetails from '../components/presentation/PlanDetails.astro';
+import Cover from '../components/presentation/slides/Cover.astro';
+import Experience from '../components/presentation/slides/Experience.astro';
+import Founders from '../components/presentation/slides/Founders.astro';
+import Diagnosis from '../components/presentation/slides/Diagnosis.astro';
+import Cost from '../components/presentation/slides/Cost.astro';
+import Deliverables from '../components/presentation/slides/Deliverables.astro';
+import Method from '../components/presentation/slides/Method.astro';
+import Implementation from '../components/presentation/slides/Implementation.astro';
+import DayToDay from '../components/presentation/slides/DayToDay.astro';
+import Plans from '../components/presentation/slides/Plans.astro';
+---
+
+<BaseLayout
+  title="Apresentação comercial | CairoPet"
+  description="CairoPet — Especialistas em Marketing para Agropecuárias. Apresentação comercial e planos."
+  noindex
+  bodyClass="pr-body"
+>
+  <Deck>
+    <Cover />
+    <Experience />
+    <Founders />
+    <Diagnosis />
+    <Cost />
+    <Deliverables />
+    <Method />
+    <Implementation />
+    <DayToDay />
+    <Plans />
+    <PlanDetails slot="after" />
+  </Deck>
+</BaseLayout>

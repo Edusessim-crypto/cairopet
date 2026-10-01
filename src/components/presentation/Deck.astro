@@ -1,0 +1,50 @@
+---
+/**
+ * Palco da apresentação: logo fixo, slides (slot), controles e diálogos (slot "after").
+ * Navegação em src/scripts/presentation.ts.
+ */
+import '../../styles/presentation.css';
+import Logo from '../brand/Logo.astro';
+import Controls from './Controls.astro';
+import { SLIDES } from '../../data/presentation';
+---
+
+<main class="deck is-booting" id="conteudo" data-deck data-theme="dark" aria-roledescription="apresentação" aria-label="Apresentação comercial CairoPet">
+  <div class="deck__logo">
+    <Logo variant="white" width={124} loading="eager" />
+    <Logo variant="black" width={124} loading="eager" alt="" />
+  </div>
+
+  <div class="deck__stage" data-stage>
+    <slot />
+  </div>
+
+  <Controls />
+  <slot name="after" />
+</main>
+
+<script is:inline define:vars={{ total: SLIDES.length }}>
+  // Antes da primeira pintura: abre no slide do link (?slide=5) sem piscar o 1º.
+  (function () {
+    var deck = document.querySelector('[data-deck]');
+    var slides = deck.querySelectorAll('[data-slide]');
+    var n = parseInt(new URLSearchParams(location.search).get('slide') || '1', 10);
+    var i = isNaN(n) ? 0 : Math.min(Math.max(n, 1), total) - 1;
+    for (var k = 0; k < slides.length; k++) {
+      if (k === i) slides[k].classList.add('is-active');
+      else slides[k].setAttribute('inert', '');
+    }
+    deck.dataset.theme = slides[i].dataset.theme;
+    deck.dataset.index = String(i);
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        deck.classList.remove('is-booting');
+      });
+    });
+  })();
+</script>
+
+<script>
+  import { initPresentation } from '../../scripts/presentation';
+  initPresentation();
+</script>

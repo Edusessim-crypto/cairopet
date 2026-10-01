@@ -1,0 +1,43 @@
+---
+/**
+ * Uma tela da apresentação. O cabeçalho "02 • EXPERIÊNCIA ———" fica na
+ * linha do logo; o conteúdo começa abaixo dele.
+ */
+import { SLIDES, type SlideId } from '../../data/presentation';
+
+interface Props {
+  id: SlideId;
+  theme?: 'dark' | 'light';
+  /** Mostrar o rótulo de seção do PPT (a capa não tem). */
+  label?: boolean;
+  class?: string;
+}
+
+const { id, theme = 'dark', label = true, class: className } = Astro.props;
+const index = SLIDES.findIndex((s) => s.id === id);
+const n = String(index + 1).padStart(2, '0');
+const total = String(SLIDES.length).padStart(2, '0');
+const name = SLIDES[index].label;
+---
+
+<section
+  class:list={['slide', `slide--${id}`, className]}
+  id={`slide-${index + 1}`}
+  data-slide={id}
+  data-theme={theme}
+  data-name={name}
+  aria-roledescription="slide"
+  aria-label={`${n} de ${total}: ${name}`}
+  tabindex="-1"
+>
+  {
+    label && (
+      <p class="slide__label pr-mono" data-reveal>
+        <b>{n}</b>
+        <span aria-hidden="true">•</span>
+        <span>{name}</span>
+      </p>
+    )
+  }
+  <slot />
+</section>

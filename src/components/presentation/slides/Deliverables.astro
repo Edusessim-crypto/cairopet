@@ -1,0 +1,87 @@
+---
+import Slide from '../Slide.astro';
+import { DELIVERABLES } from '../../../data/presentation';
+---
+
+<Slide id="entrega">
+  <h2 class="pr-title" data-reveal="title" set:html={DELIVERABLES.title} />
+
+  <ol class="dl">
+    {
+      DELIVERABLES.items.map((item, i) => (
+        <li class="dl__item" data-reveal>
+          <span class="dl__num pr-mono" aria-hidden="true">
+            {String(i + 1).padStart(2, '0')}
+          </span>
+          <h3 class="pr-h3 dl__name">{item.title}</h3>
+          <p class="pr-text">{item.text}</p>
+        </li>
+      ))
+    }
+  </ol>
+
+  <p class="pr-statement dl__statement" data-reveal>
+    {DELIVERABLES.statement.map((line) => <span>{line}</span>)}
+  </p>
+</Slide>
+
+<style>
+  .dl {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+    column-gap: var(--gap);
+    margin-top: clamp(1.5rem, 4.4dvh, 3.25rem);
+  }
+
+  .dl__item {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: 1rem;
+    row-gap: 0.4em;
+    align-content: start;
+    padding-block: clamp(0.9rem, 2.6dvh, 1.75rem);
+    border-top: 1px solid var(--c-rule);
+  }
+
+  .dl__num {
+    grid-row: span 2;
+    padding-top: 0.45em;
+    color: var(--c-fg-2);
+  }
+
+  .dl__name {
+    font-family: var(--font-display), 'Arial Black', sans-serif;
+    font-weight: 400;
+    letter-spacing: -0.025em;
+  }
+
+  .dl__item .pr-text {
+    grid-column: 2;
+    max-width: 24em;
+  }
+
+  .dl__statement {
+    margin-top: auto;
+    padding-top: clamp(1.25rem, 3.4dvh, 2.25rem);
+    border-top: 1px solid var(--c-rule);
+  }
+
+  @media (min-width: 60rem) and (min-aspect-ratio: 1/1) {
+    .dl {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      column-gap: calc(var(--gap) * 1.5);
+    }
+
+    .dl__item {
+      padding-block: clamp(1rem, calc(var(--u) * 1.7), 2.25rem) clamp(1.25rem, calc(var(--u) * 2.4), 3rem);
+    }
+
+    .dl__statement {
+      padding-top: clamp(1.25rem, calc(var(--u) * 2.4), 3rem);
+    }
+
+    .dl__statement span {
+      max-width: 24em;
+    }
+  }
+</style>

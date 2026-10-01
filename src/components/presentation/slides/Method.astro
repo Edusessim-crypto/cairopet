@@ -1,0 +1,117 @@
+---
+import Slide from '../Slide.astro';
+import { METHOD } from '../../../data/presentation';
+---
+
+<Slide id="metodo">
+  <div class="mt__head">
+    <h2 class="pr-title" data-reveal="title" set:html={METHOD.title} />
+    <p class="pr-lead" data-reveal>{METHOD.text}</p>
+  </div>
+
+  <ol class="mt">
+    {
+      METHOD.steps.map((step, i) => (
+        <li class="mt__step" data-reveal>
+          <span class="pr-node mt__node" aria-hidden="true">
+            {String(i + 1).padStart(2, '0')}
+          </span>
+          <div class="mt__copy">
+            <h3 class="pr-h3 mt__name">{step.title}</h3>
+            <p class="pr-text">{step.text}</p>
+          </div>
+        </li>
+      ))
+    }
+  </ol>
+</Slide>
+
+<style>
+  .mt__head {
+    display: flex;
+    flex-direction: column;
+    gap: 0.7em;
+  }
+
+  /* Celular: linha do tempo vertical */
+  .mt {
+    position: relative;
+    display: grid;
+    gap: clamp(1.1rem, 3dvh, 1.75rem);
+    margin-top: clamp(1.5rem, 4.6dvh, 3rem);
+  }
+
+  .mt::before {
+    content: '';
+    position: absolute;
+    top: 1rem;
+    bottom: 1rem;
+    left: calc(var(--fs-mono) * 1.375);
+    width: 1px;
+    background: var(--c-rule);
+  }
+
+  .mt__step {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 1rem;
+    align-items: start;
+  }
+
+  .mt__copy {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4em;
+    padding-top: 0.45em;
+  }
+
+  .mt__name {
+    font-family: var(--font-display), 'Arial Black', sans-serif;
+    font-weight: 400;
+    letter-spacing: -0.025em;
+  }
+
+  /* Desktop: cinco colunas ligadas por um fio horizontal */
+  @media (min-width: 60rem) and (min-aspect-ratio: 1/1) {
+    .mt__head {
+      flex-direction: row;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: var(--gap);
+    }
+
+    .mt__head .pr-lead {
+      max-width: 18em;
+      padding-bottom: 0.35em;
+      text-align: right;
+    }
+
+    .mt {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: calc(var(--gap) * 1.1);
+      margin-top: auto;
+      margin-bottom: auto;
+      padding-top: clamp(1.5rem, calc(var(--u) * 3), 4rem);
+    }
+
+    .mt::before {
+      top: calc(var(--fs-mono) * 1.375 + clamp(1.5rem, calc(var(--u) * 3), 4rem));
+      bottom: auto;
+      left: 0;
+      right: 0;
+      width: auto;
+      height: 1px;
+    }
+
+    .mt__step {
+      grid-template-columns: 1fr;
+      align-content: start;
+      gap: clamp(1rem, calc(var(--u) * 1.8), 2.25rem);
+    }
+
+    .mt__copy {
+      padding-top: 0;
+    }
+  }
+</style>

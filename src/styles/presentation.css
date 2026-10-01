@@ -1,0 +1,361 @@
+/* ==========================================================================
+   Apresentação comercial (/apresentacao)
+   Uma tela = um slide. Preto profundo, branco, cinzas; Archivo Black nos
+   títulos, Inter no texto, Space Mono nos rótulos e números.
+
+   Escala: --u = min(1vw, 1.7778dvh) — a menor medida de uma tela 16:9 que
+   cabe na janela. Tudo no desktop deriva dela, então o slide inteiro cabe
+   em 1366×768, 1440×900, 1920×1080 e MacBooks sem rolagem.
+   ========================================================================== */
+
+:root:has(.pr-body) {
+  overscroll-behavior: none;
+}
+
+.pr-body {
+  overflow: hidden;
+  background: var(--black);
+  color: var(--white);
+}
+
+.deck {
+  --u: min(1vw, 1.7778dvh);
+  --px: clamp(1rem, 4.6vw, 2rem);
+  --pt: clamp(0.875rem, 2.4dvh, 1.25rem);
+  --pb: calc(4.25rem + env(safe-area-inset-bottom));
+  --logo-h: 1.625rem;
+  --logo-w: calc(var(--logo-h) * 2.63);
+  --head-gap: clamp(1.25rem, 3.4dvh, 2rem);
+  --gap: clamp(1rem, 4vw, 1.5rem);
+
+  --fs-display: clamp(2rem, 9.2vw, 4rem);
+  --fs-h1: clamp(1.75rem, 8vw, 3.25rem);
+  --fs-h2: clamp(1.3rem, 5.6vw, 2.25rem);
+  --fs-h3: clamp(1.0625rem, 4.4vw, 1.375rem);
+  --fs-lead: clamp(1rem, 4.2vw, 1.25rem);
+  --fs-body: clamp(0.9375rem, 3.9vw, 1.125rem);
+  --fs-small: 0.875rem;
+  --fs-mono: 0.6875rem;
+  --fs-stat: clamp(2.25rem, 10.5vw, 4.5rem);
+  --fs-price: clamp(2.5rem, 12vw, 4rem);
+
+  --ease: cubic-bezier(0.22, 0.7, 0.12, 1);
+  --t-slide: 0.42s;
+
+  position: relative;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--black);
+  isolation: isolate;
+}
+
+/* Desktop, notebook, monitor e tablet deitado */
+@media (min-width: 60rem) and (min-aspect-ratio: 1/1) {
+  .deck {
+    --px: clamp(2rem, calc(var(--u) * 5), 6.5rem);
+    --pt: clamp(1.25rem, calc(var(--u) * 2.5), 3.25rem);
+    --pb: clamp(4.25rem, calc(var(--u) * 5.6), 7rem);
+    --logo-h: clamp(1.5rem, calc(var(--u) * 2.2), 2.875rem);
+    --head-gap: clamp(1.75rem, calc(var(--u) * 3.6), 4.75rem);
+    --gap: clamp(1.25rem, calc(var(--u) * 2.4), 3.25rem);
+
+    --fs-display: clamp(2.5rem, calc(var(--u) * 5.2), 7.5rem);
+    --fs-h1: clamp(2rem, calc(var(--u) * 4.2), 6.25rem);
+    --fs-h2: clamp(1.375rem, calc(var(--u) * 2.4), 3.5rem);
+    --fs-h3: clamp(1.0625rem, calc(var(--u) * 1.4), 2rem);
+    --fs-lead: clamp(1.0625rem, calc(var(--u) * 1.45), 2.125rem);
+    --fs-body: clamp(0.9375rem, calc(var(--u) * 1.2), 1.7rem);
+    --fs-small: clamp(0.875rem, calc(var(--u) * 1.08), 1.5rem);
+    --fs-mono: clamp(0.6875rem, calc(var(--u) * 0.8), 1.0625rem);
+    --fs-stat: clamp(2.5rem, calc(var(--u) * 6), 8.25rem);
+    --fs-price: clamp(2rem, calc(var(--u) * 3.6), 5rem);
+  }
+}
+
+/* Logo fixo (não pisca na troca de slide) ------------------------------------ */
+.deck__logo {
+  position: absolute;
+  z-index: 4;
+  top: calc(var(--pt) + env(safe-area-inset-top));
+  left: calc(var(--px) + env(safe-area-inset-left));
+  height: var(--logo-h);
+  pointer-events: none;
+}
+
+.deck__logo img {
+  width: auto;
+  height: var(--logo-h);
+  transition: opacity var(--t-slide) var(--ease);
+}
+
+.deck__logo img + img {
+  position: absolute;
+  inset: 0 auto auto 0;
+  opacity: 0;
+}
+
+.deck[data-theme='light'] .deck__logo img:first-child {
+  opacity: 0;
+}
+
+.deck[data-theme='light'] .deck__logo img + img {
+  opacity: 1;
+}
+
+/* Slide ------------------------------------------------------------------------ */
+.slide {
+  --c-bg: var(--black);
+  --c-fg: var(--white);
+  --c-fg-2: rgb(255 255 255 / 0.68);
+  --c-em: rgb(255 255 255 / 0.5);
+  --c-rule: rgb(255 255 255 / 0.16);
+  --c-grid: rgb(255 255 255 / 0.03);
+  --focus: var(--white);
+
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: calc(var(--pt) + env(safe-area-inset-top) + var(--logo-h) + var(--head-gap)) calc(var(--px) + env(safe-area-inset-right))
+    var(--pb) calc(var(--px) + env(safe-area-inset-left));
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  background:
+    linear-gradient(var(--c-grid) 1px, transparent 1px) 0 0 / var(--grid) var(--grid),
+    linear-gradient(90deg, var(--c-grid) 1px, transparent 1px) 0 0 / var(--grid) var(--grid),
+    var(--c-bg);
+  --grid: clamp(3rem, calc(var(--u) * 6), 7rem);
+  color: var(--c-fg);
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.3s var(--ease),
+    visibility 0s linear 0.3s;
+}
+
+.slide::-webkit-scrollbar {
+  display: none;
+}
+
+.slide[data-theme='light'] {
+  --c-bg: var(--white);
+  --c-fg: var(--ink);
+  --c-fg-2: rgb(17 17 17 / 0.68);
+  --c-em: rgb(17 17 17 / 0.48);
+  --c-rule: rgb(17 17 17 / 0.14);
+  --c-grid: rgb(17 17 17 / 0.04);
+  --focus: var(--ink);
+}
+
+.slide.is-active {
+  z-index: 1;
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity var(--t-slide) var(--ease) 0.08s,
+    visibility 0s;
+}
+
+.slide:focus {
+  outline: none;
+}
+
+/* Cabeçalho do slide: "02 • EXPERIÊNCIA ———" ao lado do logo */
+.slide__label {
+  position: absolute;
+  top: calc(var(--pt) + env(safe-area-inset-top));
+  left: calc(var(--px) + env(safe-area-inset-left) + var(--logo-w) + var(--gap) * 1.25);
+  right: calc(var(--px) + env(safe-area-inset-right));
+  display: flex;
+  align-items: center;
+  gap: 0.75em;
+  height: var(--logo-h);
+  color: var(--c-fg-2);
+}
+
+.slide__label::after {
+  content: '';
+  flex: 1;
+  min-width: 1rem;
+  height: 1px;
+  background: var(--c-rule);
+}
+
+.slide__label b {
+  color: var(--c-fg);
+  font-weight: 400;
+}
+
+/* Tipografia ------------------------------------------------------------------- */
+.pr-mono {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: var(--fs-mono);
+  letter-spacing: 0.14em;
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+
+.pr-title {
+  font-family: var(--font-display), 'Arial Black', sans-serif;
+  font-size: var(--fs-h1);
+  font-weight: 400;
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+
+.pr-title em,
+.pr-statement em {
+  color: var(--c-em);
+  font-style: normal;
+}
+
+.pr-statement {
+  font-family: var(--font-display), 'Arial Black', sans-serif;
+  font-size: var(--fs-h2);
+  font-weight: 400;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+.pr-statement > span {
+  display: block;
+}
+
+.pr-statement > span + span {
+  color: var(--c-em);
+}
+
+.pr-h3 {
+  font-size: var(--fs-h3);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.pr-lead {
+  color: var(--c-fg-2);
+  font-size: var(--fs-lead);
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+
+.pr-text {
+  color: var(--c-fg-2);
+  font-size: var(--fs-body);
+  line-height: 1.55;
+  text-wrap: pretty;
+}
+
+.pr-text strong {
+  color: var(--c-fg);
+  font-weight: 650;
+}
+
+/* Número de etapa dentro de um círculo fino (01, 02…) */
+.pr-node {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 2.75em;
+  height: 2.75em;
+  border: 1px solid var(--c-fg);
+  border-radius: 50%;
+  background: var(--c-bg);
+  color: var(--c-fg);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: var(--fs-mono);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+/* Entrada: rótulo → título → conteúdo → visual ------------------------------- */
+.slide [data-reveal] {
+  opacity: 0;
+  transform: translate3d(0, calc(var(--dir, 1) * 0.875rem), 0);
+  transition:
+    opacity 0.45s var(--ease),
+    transform 0.6s var(--ease),
+    filter 0.6s var(--ease);
+}
+
+.slide [data-reveal='title'] {
+  filter: blur(6px);
+}
+
+.slide.is-active [data-reveal] {
+  opacity: 1;
+  transform: none;
+  filter: none;
+  transition-delay: calc(0.12s + min(var(--i, 0), 7) * 0.055s);
+}
+
+.deck[data-dir='prev'] {
+  --dir: -1;
+}
+
+/* Primeira pintura: o slide aparece sem fade; só o conteúdo entra */
+.deck.is-booting .slide {
+  transition: none;
+}
+
+.deck.is-booting .slide [data-reveal] {
+  opacity: 0;
+  transform: translate3d(0, 0.875rem, 0);
+  transition: none;
+}
+
+.deck.is-booting .slide [data-reveal='title'] {
+  filter: blur(6px);
+}
+
+/* Sem JavaScript: os slides viram uma página comum ----------------------------- */
+html:not(.js) .pr-body {
+  overflow: auto;
+}
+
+html:not(.js) .deck {
+  height: auto;
+  overflow: visible;
+}
+
+html:not(.js) .slide {
+  position: relative;
+  min-height: 100dvh;
+  opacity: 1;
+  visibility: visible;
+}
+
+html:not(.js) .slide [data-reveal] {
+  opacity: 1;
+  transform: none;
+  filter: none;
+}
+
+html:not(.js) .deck__logo,
+html:not(.js) .deck__chrome {
+  display: none;
+}
+
+/* Reduzir movimento: só um fade curto, sem deslocamento, desfoque ou cascata ----- */
+@media (prefers-reduced-motion: reduce) {
+  .deck .slide,
+  .deck .slide.is-active {
+    transition:
+      opacity 0.2s linear,
+      visibility 0.2s linear !important;
+    transition-delay: 0s !important;
+  }
+
+  .deck .slide [data-reveal] {
+    opacity: 1;
+    transform: none;
+    filter: none;
+    transition: none !important;
+  }
+}

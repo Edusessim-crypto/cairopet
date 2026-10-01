@@ -1,0 +1,299 @@
+---
+/**
+ * Planos e preços exatamente como no PPT. Desktop: três colunas, o plano
+ * "Mais escolhido" invertido (fundo branco). Celular: um plano por vez,
+ * escolhido nos botões com o nome do plano.
+ */
+import Slide from '../Slide.astro';
+import CheckIcon from '../CheckIcon.astro';
+import { PLANS } from '../../../data/presentation';
+
+const featured = PLANS.plans.find((p) => p.badge)?.id ?? PLANS.plans[0].id;
+const nameOf = (id?: string) => PLANS.plans.find((p) => p.id === id)?.name;
+---
+
+<Slide id="investimento">
+  <h2 class="pr-title pl__title" data-reveal="title" set:html={PLANS.title} />
+
+  <div class="pl__switch" data-reveal>
+    {
+      PLANS.plans.map((plan) => (
+        <button class="pl__tab pr-mono" type="button" data-plan-tab={plan.id} aria-controls={`plano-${plan.id}`} aria-pressed={plan.id === featured ? 'true' : 'false'}>
+          {plan.name}
+        </button>
+      ))
+    }
+  </div>
+
+  <div class="pl" data-plans data-active={featured}>
+    {
+      PLANS.plans.map((plan) => (
+        <article class:list={['pl__plan', { 'is-featured': plan.badge }]} id={`plano-${plan.id}`} data-plan={plan.id} data-reveal>
+          <header class="pl__head">
+            {plan.badge && <p class="pl__badge pr-mono">{plan.badge}</p>}
+            <h3 class="pl__name">{plan.name}</h3>
+            <p class="pl__price">
+              <span class="pl__cur">R$</span>
+              <span class="pl__value">{plan.price}</span>
+              <span class="pl__period">{plan.period}</span>
+            </p>
+            <p class="pl__text">{plan.text}</p>
+          </header>
+
+          <div class="pl__body">
+            {plan.extends && <p class="pl__extends pr-mono">Tudo do {nameOf(plan.extends)}, mais:</p>}
+            <ul class="pl__items">
+              {plan.items.map((item) => (
+                <li>
+                  <CheckIcon />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <button class="pl__more pr-mono" type="button" data-plan-open={plan.id} aria-haspopup="dialog">
+            <span>{PLANS.more}</span>
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <path d="M4 10h11.5M11 5.5l4.5 4.5-4.5 4.5" />
+            </svg>
+          </button>
+        </article>
+      ))
+    }
+  </div>
+</Slide>
+
+<style>
+  .pl__title {
+    font-size: calc(var(--fs-h1) * 0.92);
+  }
+
+  /* Seletor de plano (só no celular) */
+  .pl__switch {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.25rem;
+    margin-top: 1.25rem;
+    padding: 0.25rem;
+    border: 1px solid var(--c-rule);
+    border-radius: 999px;
+  }
+
+  .pl__tab {
+    min-height: 2.5rem;
+    padding: 0 0.25rem;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--c-fg-2);
+    letter-spacing: 0.08em;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .pl__tab[aria-pressed='true'] {
+    background: var(--white);
+    color: var(--black);
+  }
+
+  .pl {
+    display: grid;
+    margin-top: 1rem;
+  }
+
+  .pl__plan {
+    display: flex;
+    flex-direction: column;
+    padding: clamp(1.25rem, 5vw, 1.75rem);
+    border: 1px solid var(--c-rule);
+    border-radius: 14px;
+  }
+
+  .pl__plan.is-featured {
+    --c-fg: var(--ink);
+    --c-fg-2: rgb(17 17 17 / 0.7);
+    --c-rule: rgb(17 17 17 / 0.14);
+    --focus: var(--ink);
+    border-color: var(--white);
+    background: var(--white);
+    color: var(--ink);
+  }
+
+  .pl__head {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .pl__badge {
+    align-self: flex-start;
+    margin-bottom: 0.9em;
+    padding: 0.45em 0.8em 0.4em;
+    border-radius: 4px;
+    background: var(--ink);
+    color: var(--white);
+    font-weight: 700;
+    letter-spacing: 0.12em;
+  }
+
+  .pl__name {
+    font-family: var(--font-display), 'Arial Black', sans-serif;
+    font-size: var(--fs-h3);
+    font-weight: 400;
+    line-height: 1;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+
+  .pl__price {
+    display: flex;
+    align-items: baseline;
+    gap: 0.12em;
+    margin-top: 0.45em;
+    font-family: var(--font-display), 'Arial Black', sans-serif;
+    font-size: var(--fs-price);
+    line-height: 1;
+    letter-spacing: -0.045em;
+    white-space: nowrap;
+  }
+
+  .pl__cur {
+    margin-right: 0.12em;
+    font-size: 0.5em;
+    letter-spacing: -0.02em;
+  }
+
+  .pl__period {
+    margin-left: 0.08em;
+    color: var(--c-fg-2);
+    font-family: var(--font-body), system-ui, sans-serif;
+    font-size: 0.32em;
+    font-weight: 500;
+    letter-spacing: 0;
+  }
+
+  .pl__text {
+    margin-top: 0.9em;
+    color: var(--c-fg-2);
+    font-size: var(--fs-small);
+    line-height: 1.45;
+    text-wrap: pretty;
+  }
+
+  .pl__body {
+    margin-top: clamp(1rem, 2.4dvh, 1.5rem);
+    padding-top: clamp(1rem, 2.4dvh, 1.5rem);
+    border-top: 1px solid var(--c-rule);
+  }
+
+  .pl__extends {
+    margin-bottom: 0.9em;
+    color: var(--c-fg);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+  }
+
+  .pl__items {
+    display: grid;
+    gap: 0.55em;
+    font-size: var(--fs-small);
+    line-height: 1.35;
+  }
+
+  .pl__items li {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.65em;
+    align-items: start;
+  }
+
+  .pl__more {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    gap: 0.6em;
+    min-height: 2.75rem;
+    margin-top: auto;
+    padding: 1.1em 0 0;
+    border: 0;
+    background: none;
+    color: var(--c-fg);
+    letter-spacing: 0.12em;
+    text-align: left;
+  }
+
+  .pl__more svg {
+    flex: none;
+    width: 1.5em;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: transform 0.25s var(--ease);
+  }
+
+  .pl__more span {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.35em;
+    text-decoration-color: var(--c-rule);
+    transition: text-decoration-color 0.2s var(--ease);
+  }
+
+  .pl__more:hover svg {
+    transform: translateX(3px);
+  }
+
+  .pl__more:hover span {
+    text-decoration-color: currentColor;
+  }
+
+  /* Celular e tablet em pé: um plano por vez */
+  @media (max-width: 59.99rem), (max-aspect-ratio: 1/1) {
+    .pl__plan {
+      display: none;
+    }
+
+    .pl[data-active='presenca'] [data-plan='presenca'],
+    .pl[data-active='crescimento'] [data-plan='crescimento'],
+    .pl[data-active='performance'] [data-plan='performance'] {
+      display: flex;
+    }
+  }
+
+  /* Desktop: três colunas lado a lado */
+  @media (min-width: 60rem) and (min-aspect-ratio: 1/1) {
+    .pl__switch {
+      display: none;
+    }
+
+    .pl {
+      flex: 1;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: calc(var(--gap) * 0.8);
+      align-items: stretch;
+      min-height: 0;
+      margin-top: clamp(1.25rem, calc(var(--u) * 2.2), 3rem);
+    }
+
+    .pl__plan {
+      padding: clamp(1.1rem, calc(var(--u) * 1.8), 2.5rem) clamp(1.1rem, calc(var(--u) * 1.9), 2.75rem);
+    }
+
+    /* O selo não empurra o nome: os três planos ficam alinhados na mesma linha */
+    .pl__head {
+      position: relative;
+    }
+
+    .pl__badge {
+      position: absolute;
+      top: -0.2em;
+      right: 0;
+      margin: 0;
+    }
+
+    .pl__text {
+      min-height: 2.9em;
+    }
+  }
+</style>

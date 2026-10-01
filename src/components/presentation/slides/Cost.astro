@@ -1,0 +1,141 @@
+---
+import { Picture } from 'astro:assets';
+import Slide from '../Slide.astro';
+import { COST } from '../../../data/presentation';
+---
+
+<Slide id="custo">
+  <div class="cs">
+    <h2 class="pr-title cs__title" data-reveal="title" set:html={COST.title} />
+
+    <ol class="cs__list">
+      {
+        COST.items.map((item) => (
+          <li class="cs__item" data-reveal>
+            <div class="cs__photo">
+              <Picture
+                src={item.photo}
+                alt={item.alt}
+                formats={['avif', 'webp']}
+                widths={[item.photo.width]}
+                sizes="(min-width: 60rem) 18vw, 30vw"
+                loading="eager"
+                fetchpriority="low"
+                decoding="async"
+              />
+            </div>
+            <div class="cs__copy">
+              <h3 class="pr-h3">{item.title}</h3>
+              <p class="pr-text">{item.text}</p>
+            </div>
+          </li>
+        ))
+      }
+    </ol>
+
+    <p class="pr-statement cs__statement" data-reveal>
+      {COST.statement.map((line) => <span>{line}</span>)}
+    </p>
+  </div>
+</Slide>
+
+<style>
+  .cs {
+    display: grid;
+    flex: 1;
+    gap: clamp(1.5rem, 4dvh, 2.5rem);
+  }
+
+  .cs__title {
+    text-transform: uppercase;
+    letter-spacing: -0.03em;
+  }
+
+  .cs__list {
+    display: grid;
+    border-top: 1px solid var(--c-rule);
+  }
+
+  .cs__item {
+    display: grid;
+    grid-template-columns: clamp(5.5rem, 26vw, 8rem) minmax(0, 1fr);
+    gap: clamp(0.875rem, 3.5vw, 1.25rem);
+    align-items: start;
+    padding-block: clamp(0.9rem, 2.2dvh, 1.5rem);
+    border-bottom: 1px solid var(--c-rule);
+  }
+
+  .cs__photo {
+    overflow: hidden;
+    aspect-ratio: 1;
+    border-radius: 8px;
+    background: var(--graphite);
+  }
+
+  .cs__photo :global(img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: grayscale(1) contrast(1.06);
+  }
+
+  .cs__copy {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45em;
+  }
+
+  .cs__copy .pr-text {
+    font-size: var(--fs-small);
+  }
+
+  .cs__statement {
+    padding-top: clamp(1rem, 2.6dvh, 1.5rem);
+    border-top: 1px solid var(--c-rule);
+  }
+
+  /* Desktop: título e conclusão à esquerda, os três custos empilhados à direita */
+  @media (min-width: 60rem) and (min-aspect-ratio: 1/1) {
+    .cs {
+      grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+      grid-template-rows: auto 1fr;
+      grid-template-areas:
+        'title list'
+        'statement list';
+      column-gap: calc(var(--gap) * 2);
+      row-gap: 0;
+    }
+
+    .cs__title {
+      grid-area: title;
+      font-size: calc(var(--fs-h1) * 1.06);
+    }
+
+    .cs__list {
+      grid-area: list;
+      align-self: start;
+    }
+
+    .cs__statement {
+      grid-area: statement;
+      align-self: end;
+      padding-top: 0;
+      border-top: 0;
+      font-size: calc(var(--fs-h2) * 0.92);
+    }
+
+    .cs__item {
+      grid-template-columns: clamp(8rem, calc(var(--u) * 16.5), 21rem) minmax(0, 1fr);
+      gap: calc(var(--gap) * 1.1);
+      padding-block: clamp(0.9rem, calc(var(--u) * 1.5), 2rem);
+    }
+
+    .cs__item:first-child {
+      padding-top: clamp(0.9rem, calc(var(--u) * 1.5), 2rem);
+    }
+
+    .cs__photo {
+      aspect-ratio: 16 / 10;
+    }
+  }
+</style>

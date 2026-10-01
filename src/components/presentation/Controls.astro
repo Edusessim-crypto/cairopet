@@ -1,0 +1,235 @@
+---
+/**
+ * Controles discretos: tela cheia, anterior/próximo, contador e barra de progresso.
+ * No desktop ficam quase invisíveis quando o mouse para (ver presentation.ts).
+ */
+import { SLIDES } from '../../data/presentation';
+
+const total = String(SLIDES.length).padStart(2, '0');
+---
+
+<div class="deck__chrome">
+  <div class="ctl-fade" aria-hidden="true"></div>
+  <div class="ctl" data-controls>
+    <button class="ctl__fs" type="button" data-fullscreen aria-label="Entrar em tela cheia" title="Tela cheia (F)" hidden>
+      <svg class="ctl__fs-in" viewBox="0 0 20 20" aria-hidden="true">
+        <path d="M3 7.5V3h4.5M12.5 3H17v4.5M17 12.5V17h-4.5M7.5 17H3v-4.5" />
+      </svg>
+      <svg class="ctl__fs-out" viewBox="0 0 20 20" aria-hidden="true">
+        <path d="M7.5 3v4.5H3M17 7.5h-4.5V3M12.5 17v-4.5H17M3 12.5h4.5V17" />
+      </svg>
+      <span class="ctl__fs-label">Tela cheia</span>
+    </button>
+
+    <div class="ctl__nav">
+      <button class="ctl__btn" type="button" data-prev aria-label="Slide anterior">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12 4.5 6.5 10l5.5 5.5" /></svg>
+      </button>
+      <p class="ctl__count pr-mono" aria-hidden="true">
+        <span data-current>01</span><span class="ctl__sep">/</span><span>{total}</span>
+      </p>
+      <button class="ctl__btn" type="button" data-next aria-label="Próximo slide">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m8 4.5 5.5 5.5L8 15.5" /></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="progress" aria-hidden="true"><span data-progress></span></div>
+  <p class="visually-hidden" aria-live="polite" data-live></p>
+</div>
+
+<style>
+  .ctl {
+    position: absolute;
+    z-index: 5;
+    right: calc(var(--px) + env(safe-area-inset-right));
+    bottom: calc(clamp(0.75rem, calc(var(--pb) / 2 - 1.375rem), 2.5rem) + env(safe-area-inset-bottom));
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--ctl-fg);
+    transition: opacity 0.5s var(--ease);
+  }
+
+  /* Conteúdo que rola some por baixo dos controles em vez de passar atrás deles */
+  .ctl-fade {
+    position: absolute;
+    z-index: 4;
+    inset: auto 0 0 0;
+    height: calc(var(--pb) + 1.25rem);
+    background: linear-gradient(to bottom, transparent, var(--ctl-solid) 62%);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s var(--ease);
+  }
+
+  :global(.deck.is-scrollable) .ctl-fade {
+    opacity: 1;
+  }
+
+  :global(.deck) {
+    --ctl-solid: var(--black);
+    --ctl-fg: var(--white);
+    --ctl-fg-2: rgb(255 255 255 / 0.6);
+    --ctl-line: rgb(255 255 255 / 0.22);
+    --ctl-hover: rgb(255 255 255 / 0.1);
+    --ctl-bg: rgb(0 0 0 / 0.55);
+  }
+
+  :global(.deck[data-theme='light']) {
+    --ctl-solid: var(--white);
+    --ctl-fg: var(--ink);
+    --ctl-fg-2: rgb(17 17 17 / 0.6);
+    --ctl-line: rgb(17 17 17 / 0.2);
+    --ctl-hover: rgb(17 17 17 / 0.06);
+    --ctl-bg: rgb(255 255 255 / 0.7);
+  }
+
+  /* Fundo translúcido: legível mesmo sobre a foto da capa */
+  .ctl__nav {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    border-radius: 999px;
+    background: var(--ctl-bg);
+  }
+
+  .ctl__btn,
+  .ctl__fs {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+    border: 1px solid var(--ctl-line);
+    border-radius: 999px;
+    background: var(--ctl-bg);
+    color: inherit;
+    transition:
+      background-color 0.2s var(--ease),
+      border-color 0.2s var(--ease),
+      opacity 0.2s var(--ease);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .ctl__btn:hover,
+  .ctl__fs:hover {
+    border-color: var(--ctl-fg);
+    background: var(--ctl-hover);
+  }
+
+  .ctl__btn[disabled] {
+    opacity: 0.3;
+    cursor: default;
+  }
+
+  .ctl__btn[disabled]:hover {
+    border-color: var(--ctl-line);
+    background: var(--ctl-bg);
+  }
+
+  .ctl svg {
+    width: 1.125rem;
+    height: 1.125rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .ctl__fs {
+    padding: 0 1rem 0 0.875rem;
+    margin-right: 0.75rem;
+  }
+
+  .ctl__fs-label {
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-size: 0.6875rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .ctl__fs-out,
+  :global(.is-fullscreen) .ctl__fs-in,
+  :global(.is-fullscreen) .ctl__fs-label {
+    display: none;
+  }
+
+  :global(.is-fullscreen) .ctl__fs-out {
+    display: block;
+  }
+
+  :global(.is-fullscreen) .ctl__fs {
+    padding: 0;
+    border-color: transparent;
+  }
+
+  .ctl__count {
+    display: flex;
+    gap: 0.4em;
+    min-width: 5.5em;
+    justify-content: center;
+    margin: 0;
+    color: var(--ctl-fg-2);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ctl__count [data-current] {
+    color: var(--ctl-fg);
+  }
+
+  .ctl__sep {
+    opacity: 0.6;
+  }
+
+  .progress {
+    position: absolute;
+    z-index: 5;
+    inset: auto 0 0 0;
+    height: 2px;
+    background: var(--ctl-line);
+  }
+
+  .progress span {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: var(--ctl-fg);
+    transform: scaleX(var(--progress, 0.1));
+    transform-origin: left;
+    transition: transform 0.5s var(--ease);
+  }
+
+  /* Desktop parado: os controles quase somem; voltam ao mexer o mouse ou focar. */
+  :global(.deck.is-idle) .ctl:not(:hover, :focus-within) {
+    opacity: 0.16;
+  }
+
+  :global(.deck.is-idle.is-fullscreen) {
+    cursor: none;
+  }
+
+  /* Celular: só setas e contador; tela cheia some (o iPhone não deixa) */
+  @media (max-width: 47.99rem) {
+    .ctl {
+      left: calc(var(--px) + env(safe-area-inset-left));
+      justify-content: flex-end;
+    }
+
+    .ctl__fs {
+      margin-right: auto;
+    }
+
+    .ctl__fs {
+      width: 2.75rem;
+      padding: 0;
+    }
+
+    .ctl__fs-label {
+      display: none;
+    }
+  }
+</style>

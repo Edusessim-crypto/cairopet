@@ -1,0 +1,86 @@
+---
+import Slide from '../Slide.astro';
+import { EXPERIENCE } from '../../../data/presentation';
+---
+
+<Slide id="experiencia">
+  <h2 class="pr-title xp__title" data-reveal="title" set:html={EXPERIENCE.title} />
+
+  <dl class="xp">
+    {
+      EXPERIENCE.stats.map((stat) => (
+        <div class="xp__item" data-reveal>
+          <dt class="xp__value">{stat.value}</dt>
+          <dd class="xp__text">{stat.text}</dd>
+        </div>
+      ))
+    }
+  </dl>
+</Slide>
+
+<style>
+  .xp {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--gap);
+    margin-top: auto;
+    padding-top: clamp(1.5rem, 4dvh, 3rem);
+  }
+
+  .xp__item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6em;
+    padding-block: clamp(1rem, 2.6dvh, 1.75rem) clamp(1.25rem, 4.2dvh, 3rem);
+    border-top: 1px solid var(--c-rule);
+  }
+
+  .xp__value {
+    font-family: var(--font-display), 'Arial Black', sans-serif;
+    font-size: var(--fs-stat);
+    line-height: 0.95;
+    letter-spacing: -0.045em;
+    white-space: nowrap;
+  }
+
+  .xp__text {
+    max-width: 25em;
+    margin: 0;
+    color: var(--c-fg-2);
+    font-size: var(--fs-body);
+    line-height: 1.5;
+    text-wrap: pretty;
+  }
+
+  /* Celular: uma coluna, números um embaixo do outro */
+  @media (max-width: 34.99rem) {
+    .xp {
+      grid-template-columns: 1fr;
+      margin-top: clamp(1.5rem, 5dvh, 2.5rem);
+      padding-top: 0;
+    }
+
+    .xp__item {
+      padding-block: 0.9rem 1.1rem;
+    }
+
+    .xp__value {
+      font-size: clamp(2rem, 10vw, 2.75rem);
+    }
+  }
+
+  @media (min-width: 60rem) and (min-aspect-ratio: 1/1) {
+    .xp__title {
+      max-width: 12em;
+    }
+
+    .xp {
+      column-gap: 0;
+    }
+
+    .xp__item:nth-child(2n) {
+      padding-left: calc(var(--gap) * 1.4);
+      border-left: 1px solid var(--c-rule);
+    }
+  }
+</style>

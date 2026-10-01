@@ -1,0 +1,206 @@
+---
+/**
+ * "Ver tudo o que está incluso": o PPT diz que cada plano inclui "tudo do"
+ * plano anterior. Este painel abre essa soma, plano por plano, usando só os
+ * itens do PPT (nada consolidado nem reescrito).
+ */
+import CheckIcon from './CheckIcon.astro';
+import { PLANS, planChain } from '../../data/presentation';
+---
+
+{
+  PLANS.plans.map((plan) => {
+    const chain = planChain(plan);
+    return (
+      <dialog class="pd" id={`incluso-${plan.id}`} data-plan-dialog={plan.id} aria-labelledby={`incluso-${plan.id}-nome`}>
+        <div class="pd__inner">
+          <header class="pd__head">
+            <p class="pd__eyebrow pr-mono">{PLANS.more.replace(/^Ver /, '')}</p>
+            <h2 class="pd__name" id={`incluso-${plan.id}-nome`}>
+              {plan.name}
+            </h2>
+            <p class="pd__price">
+              R$ {plan.price}
+              <span>{plan.period}</span>
+            </p>
+            <button class="pd__close" type="button" data-plan-close aria-label="Fechar">
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                <path d="m5 5 10 10M15 5 5 15" />
+              </svg>
+            </button>
+          </header>
+
+          <div class="pd__groups" style={`--cols:${chain.length}`}>
+            {chain.map((p, i) => (
+              <section class:list={['pd__group', { 'is-current': p.id === plan.id }]}>
+                <h3 class="pd__group-name pr-mono">
+                  {i > 0 && <span aria-hidden="true">+ </span>}
+                  {p.name}
+                </h3>
+                <ul class="pd__items">
+                  {p.items.map((item) => (
+                    <li>
+                      <CheckIcon />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </div>
+        </div>
+      </dialog>
+    );
+  })
+}
+
+<style>
+  .pd {
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: var(--black);
+    color: var(--white);
+    overscroll-behavior: contain;
+    --focus: var(--white);
+  }
+
+  .pd::backdrop {
+    background: var(--black);
+  }
+
+  .pd[open] {
+    display: flex;
+    animation: pd-in 0.32s var(--ease) both;
+  }
+
+  @keyframes pd-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+  }
+
+  .pd__inner {
+    width: 100%;
+    max-width: 82rem;
+    margin: auto;
+    padding: clamp(1.25rem, 5vw, 4rem) var(--px);
+  }
+
+  .pd__head {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem 1.5rem;
+    padding-right: 3.5rem;
+    padding-bottom: clamp(1.25rem, 3dvh, 2rem);
+    border-bottom: 1px solid rgb(255 255 255 / 0.16);
+  }
+
+  .pd__eyebrow {
+    flex-basis: 100%;
+    color: rgb(255 255 255 / 0.68);
+  }
+
+  .pd__name {
+    font-family: var(--font-display), 'Arial Black', sans-serif;
+    font-size: var(--fs-h1);
+    font-weight: 400;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
+  }
+
+  .pd__price {
+    font-family: var(--font-display), 'Arial Black', sans-serif;
+    font-size: var(--fs-h2);
+    letter-spacing: -0.03em;
+  }
+
+  .pd__price span {
+    margin-left: 0.1em;
+    color: rgb(255 255 255 / 0.68);
+    font-family: var(--font-body), system-ui, sans-serif;
+    font-size: 0.5em;
+    font-weight: 500;
+    letter-spacing: 0;
+  }
+
+  .pd__close {
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: grid;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+    border: 1px solid rgb(255 255 255 / 0.22);
+    border-radius: 50%;
+    background: none;
+    color: var(--white);
+  }
+
+  .pd__close:hover {
+    border-color: var(--white);
+  }
+
+  .pd__close svg {
+    width: 1.1rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.6;
+    stroke-linecap: round;
+  }
+
+  .pd__groups {
+    display: grid;
+    gap: clamp(1.5rem, 4dvh, 2.5rem) var(--gap);
+    margin-top: clamp(1.5rem, 4dvh, 2.5rem);
+  }
+
+  .pd__group-name {
+    margin-bottom: 1em;
+    color: rgb(255 255 255 / 0.68);
+    font-weight: 700;
+  }
+
+  .pd__group.is-current .pd__group-name {
+    color: var(--white);
+  }
+
+  .pd__items {
+    display: grid;
+    gap: 0.6em;
+    font-size: var(--fs-body);
+    line-height: 1.4;
+  }
+
+  .pd__items li {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.7em;
+  }
+
+  .pd__group:not(.is-current) .pd__items {
+    color: rgb(255 255 255 / 0.8);
+  }
+
+  @media (min-width: 48rem) {
+    .pd__groups {
+      grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pd[open] {
+      animation: none;
+    }
+  }
+</style>
