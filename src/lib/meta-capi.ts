@@ -1,10 +1,15 @@
 /**
- * Meta Conversions API — evento Lead enviado do servidor.
- * Usa o mesmo event_id do Pixel (disparado em /obrigado) para a Meta deduplicar.
- * Dados pessoais vão com hash SHA-256, normalizados conforme a documentação da Meta.
+ * Meta Conversions API — evento Lead enviado do servidor, depois de a planilha
+ * confirmar o lead. Usa o mesmo event_id do evento `lead` que o formulário manda
+ * ao dataLayer (o GTM o repassa ao Pixel como eventID), para a Meta deduplicar.
+ * Dados pessoais vão com hash SHA-256, aqui no servidor, normalizados conforme a
+ * documentação da Meta.
+ *
+ * Ativação só no servidor: META_PIXEL_ID + META_CAPI_ACCESS_TOKEN (ambas secretas,
+ * lidas em runtime e fora do bundle do navegador). Não depende de nenhuma
+ * variável PUBLIC_* — o Pixel do navegador é carregado exclusivamente pelo GTM.
  */
-import { PUBLIC_META_PIXEL_ID } from 'astro:env/client';
-import { META_CAPI_ACCESS_TOKEN, META_CAPI_TEST_EVENT_CODE, META_GRAPH_API_VERSION } from 'astro:env/server';
+import { META_CAPI_ACCESS_TOKEN, META_CAPI_TEST_EVENT_CODE, META_GRAPH_API_VERSION, META_PIXEL_ID } from 'astro:env/server';
 import { normalizeWhatsapp, type Lead } from './lead-schema';
 
 async function sha256(value: string): Promise<string> {
@@ -20,7 +25,7 @@ const plain = (v: string) =>
     .toLowerCase()
     .replace(/[^a-z]/g, '');
 
-export const capiEnabled = () => Boolean(PUBLIC_META_PIXEL_ID && META_CAPI_ACCESS_TOKEN);
+export const capiEnabled = () => Boolean(META_PIXEL_ID && META_CAPI_ACCESS_TOKEN);
 
 interface Context {
   ip?: string;
@@ -63,7 +68,7 @@ export async function sendLeadToCapi(lead: Lead, ctx: Context): Promise<void> {
   };
   if (META_CAPI_TEST_EVENT_CODE) body.test_event_code = META_CAPI_TEST_EVENT_CODE;
 
-  const url = `https://graph.facebook.com/${META_GRAPH_API_VERSION}/${PUBLIC_META_PIXEL_ID}/events?access_token=${encodeURIComponent(META_CAPI_ACCESS_TOKEN!)}`;
+  const url = `https://graph.facebook.com/${META_GRAPH_API_VERSION}/${encodeURIComponent(META_PIXEL_ID!)}/events?access_token=${encodeURIComponent(META_CAPI_ACCESS_TOKEN!)}`;
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

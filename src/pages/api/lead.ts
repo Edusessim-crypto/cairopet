@@ -113,7 +113,9 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
   const fail = (status: number, message: string, query: string) =>
     isJson ? json(status, { ok: false, message }) : redirect(`/formulario/?erro=${query}`);
 
-  // Honeypot: robôs preenchem o campo invisível. Responde "ok" e descarta.
+  // Honeypot: robôs preenchem o campo invisível. Responde "ok" (a mesma resposta de
+  // sempre, sem dar pista ao robô) e descarta — mas SEM `saved: true`, então o
+  // formulário não registra conversão para um envio que não foi salvo.
   if (typeof raw.website === 'string' && raw.website.trim() !== '') {
     return isJson ? json(200, { ok: true }) : redirect('/obrigado/');
   }
@@ -156,7 +158,10 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
     console.error('[lead] Conversions API falhou:', err);
   }
 
-  return isJson ? json(200, { ok: true }) : redirect('/obrigado/');
+  // `saved: true` é a confirmação inequívoca de lead salvo (a planilha respondeu ok,
+  // inclusive `duplicate` — o mesmo event_id já estava lá). Só com ela o formulário
+  // dispara o evento `lead`.
+  return isJson ? json(200, { ok: true, saved: true }) : redirect('/obrigado/');
 };
 
 export const ALL: APIRoute = () => json(405, { ok: false, message: 'Método não permitido.' });

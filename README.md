@@ -10,7 +10,7 @@ Lighthouse (build de produção): mobile 98 · acessibilidade 100 · boas práti
 
 **Conceito visual — "Os objetos do balcão":** etiqueta de gôndola (a loja tem estoque, preço, equipe; falta movimento), cupom (a prova do case AgroUnião) e carimbo com o símbolo oficial ("uma agropecuária por cidade").
 
-**Fluxo de envio (não alterar sem motivo):** enviar → botão desabilitado → `fetch` POST com `keepalive` → espera a API (`res.ok`, que só vem depois de a planilha confirmar) → conversão `lead` (GA4 `generate_lead` + Meta `Lead`, aguardada por `eventCallback` até 2 s) → `/obrigado/` → WhatsApp `5551995757018` com mensagem pronta. Se falhar: fica no formulário, respostas mantidas, botão liberado, mensagem de erro + botão do WhatsApp. As situações marcadas na home chegam pré-marcadas na etapa "Dores".
+**Fluxo de envio (não alterar sem motivo):** enviar → botão desabilitado → `fetch` POST com `keepalive` (até 25 s) → espera a API responder `{ ok: true, saved: true }` (só depois de a planilha confirmar) → `dataLayer.push({ event: 'lead', event_id })` → GTM dispara GA4 `generate_lead` + Meta `Lead` (aguardado por `eventCallback` até 2 s) → `/obrigado/` → WhatsApp `5551995757018` com mensagem pronta. Se falhar: fica no formulário, respostas mantidas, botão liberado, mensagem de erro + botão do WhatsApp; um novo envio reaproveita o mesmo `event_id`. As situações marcadas na home chegam pré-marcadas na etapa "Dores".
 
 ```bash
 npm install
@@ -29,7 +29,7 @@ npm run check    # checagem de tipos
 | 2 | Domínio canônico | `PUBLIC_SITE_URL` (padrão provisório: `https://cairopet.com.br` — confirmar) |
 | 3 | Razão social, CNPJ e e-mail de privacidade (aparecem destacados em preto na política até serem preenchidos) | `PUBLIC_COMPANY_LEGAL_NAME`, `PUBLIC_COMPANY_CNPJ`, `PUBLIC_CONTACT_EMAIL` |
 | 4 | Instagram / WhatsApp (sem valor, os botões simplesmente não aparecem) | `PUBLIC_INSTAGRAM_URL`, `PUBLIC_WHATSAPP_NUMBER` |
-| 5 | Meta Pixel + Conversions API + GA4 | ver **Tracking** |
+| 5 | GA4 e Meta Pixel (no GTM) · Conversions API (opcional) | ver **Tracking** |
 | 6 | **Fotos reais** de agropecuária (hoje todas temporárias) | ver **Fotos** |
 | 7 | Revisão jurídica da Política de Privacidade | `src/pages/politica-de-privacidade.astro` |
 
@@ -39,23 +39,29 @@ Todas as variáveis estão documentadas em [`.env.example`](.env.example). Na Ve
 
 ## Tracking
 
-| Evento | Quando dispara | Destino |
+O site só faz `dataLayer.push`. O **GTM (`GTM-MQPCCFFG`) é a única camada do navegador** que carrega e dispara GA4 e Meta Pixel — não existe `gtag()`/`fbq()` no código (instalar GA4 ou Pixel fora do GTM duplicaria os eventos).
+
+| Evento (dataLayer) | Quando dispara | No GTM (configurado fora do código) |
 |---|---|---|
-| `PageView` | carregamento | Meta Pixel, GA4 |
-| `cta_click` | clique em qualquer CTA (com `location`) | GA4, dataLayer |
-| `form_start` | primeira interação no formulário | GA4, dataLayer |
-| `form_step` | cada etapa concluída (`step`, `step_name`) | GA4, dataLayer |
-| `form_submit` | tentativa de envio já validada | GA4, dataLayer |
-| **`Lead`** | **só depois que o servidor confirma o lead salvo** | Pixel (em `/obrigado/`) + Conversions API (servidor), mesmo `event_id` → a Meta deduplica |
-| `generate_lead` | idem acima | GA4 (marcar como *evento-chave*) |
-| `whatsapp_click` / `Contact` | clique em link de WhatsApp | GA4 / Pixel |
+| — | carregamento | GA4 `page_view` / Meta `PageView` |
+| `cta_click` | clique em qualquer CTA (com `location`) | — |
+| `form_start` | primeira resposta de verdade no formulário (1× por preenchimento; abrir e sair não conta) | GA4 `form_start` / Meta `InicioFormulario` |
+| `form_step` | cada etapa concluída (`step`, `step_name`) | — |
+| `form_submit` | tentativa de envio já validada, **antes** da API (não é conversão) | — |
+| **`lead`** + `event_id` | **no formulário, só depois de a API responder `saved: true`**, e antes de abrir `/obrigado/` | GA4 `generate_lead` + Meta `Lead` (eventID = `event_id`) |
+| `whatsapp_click` + `location` | clique em link de WhatsApp | GA4 `whatsapp_click` / Meta `Contact` |
 
-Garantias testadas: o `Lead` não dispara no clique, não duplica ao recarregar `/obrigado/`, e não dispara em visita direta a `/obrigado/`.
-A Conversions API só é chamada **depois** do webhook responder com sucesso.
+`/obrigado/` não dispara conversão nenhuma (só PageView pelo GTM): recarregar ou visitar direto não gera `lead`.
 
-UTMs (`utm_source`, `utm_medium`, `utm_campaign`, `utm_content`, `utm_term`), `fbclid`, `gclid`, página de entrada e referrer ficam salvos por 30 dias e vão junto com cada lead.
+**`event_id`** — um por preenchimento: criado (UUID aleatório) na primeira tentativa de envio, gravado no rascunho do formulário (`cp_lead_draft_v3`, 24 h), reaproveitado em qualquer novo envio (erro de rede, timeout, 5xx, 422, recarregar a página) e apagado só quando a API confirma o lead. Vai para a planilha (deduplicação no Apps Script), para o `dataLayer` (`lead`) e, se ativa, para a Conversions API.
 
-Para testar a CAPI: defina `META_CAPI_TEST_EVENT_CODE` com o código da aba *Eventos de teste* do Gerenciador de Eventos.
+**Contrato de `/api/lead` (JSON):** `{ ok: true, saved: true }` = lead salvo (a planilha respondeu `ok`, inclusive `duplicate`) → único caso que dispara `lead`. `{ ok: true }` sem `saved` = envio descartado pelo filtro anti-robô → vai para `/obrigado/`, sem conversão. `{ ok: false }` (4xx/5xx) = erro → fica no formulário.
+
+**Tempos:** navegador espera 25 s · API espera a planilha 15 s (+ Conversions API 4 s, se ativa) · função da Vercel com `maxDuration: 30`.
+
+**Conversions API (opcional, desativada até configurar):** só servidor, ativada com `META_PIXEL_ID` + `META_CAPI_ACCESS_TOKEN`. É chamada **depois** de a planilha confirmar, com o mesmo `event_id` do `lead` (a Meta deduplica com o Pixel do GTM); dados pessoais vão com hash SHA-256 no servidor. Falha da CAPI não derruba o lead. Para testar: `META_CAPI_TEST_EVENT_CODE` com o código da aba *Eventos de teste* do Gerenciador de Eventos.
+
+UTMs (`utm_source`, `utm_medium`, `utm_campaign`, `utm_content`, `utm_term`), `fbclid`, `gclid`, página de entrada e referrer ficam salvos por 30 dias (`cp_attr`; a última visita com parâmetros de campanha vence) e vão junto com cada lead.
 
 ### Payload enviado ao webhook
 

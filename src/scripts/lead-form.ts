@@ -7,8 +7,13 @@
  *   (localStorage por 24h; sem ele, sessionStorage).
  * - Teclado: não abre sozinho no celular; se já estiver aberto, segue para o
  *   próximo campo de texto. Com o teclado aberto, campo e botão ficam visíveis.
- * - Envio: espera a API confirmar (res.ok) → dispara a conversão (generate_lead/Lead,
- *   até 2 s) → só então abre /obrigado/. Falhou: fica na página, com o WhatsApp.
+ * - Envio: espera a API confirmar o lead salvo (`ok` + `saved`) → dispara a conversão
+ *   (`lead` no dataLayer → GTM → generate_lead/Lead, até 2 s) → só então abre /obrigado/.
+ *   Falhou: fica na página, com o WhatsApp.
+ * - event_id: um por preenchimento. Nasce na primeira tentativa de envio, fica no
+ *   rascunho e é reaproveitado em toda nova tentativa (erro de rede, timeout, 5xx,
+ *   422, recarregar a página) — a planilha deduplica por ele. Só é apagado junto
+ *   com o rascunho, depois de o servidor confirmar o lead.
  */
 import {
   firstName,
@@ -26,6 +31,26 @@ const DRAFT_KEY = 'cp_lead_draft_v3';
 const DRAFT_TTL = 24 * 60 * 60 * 1000;
 const SITUATIONS_KEY = 'cp_situacoes';
 const NOT_SAVED = new Set(['website', 'consentimento']);
+/** Campos que o próprio site pode pré-preencher (situações marcadas na home): não provam interação. */
+const PREFILLED = new Set(['dores']);
+
+interface Draft {
+  ts: number;
+  values: Record<string, string | string[]>;
+  index: number;
+  eventId?: string;
+}
+
+/**
+ * Rascunho em que a pessoa de fato respondeu algo (ou já tentou enviar).
+ * Rascunho vazio — página aberta e abandonada — não conta como formulário iniciado.
+ */
+function hasMeaningfulDraft(draft: Draft): boolean {
+  if (draft.eventId) return true;
+  return Object.entries(draft.values ?? {}).some(
+    ([name, v]) => !PREFILLED.has(name) && (Array.isArray(v) ? v.length > 0 : String(v ?? '').trim() !== ''),
+  );
+}
 
 /** Campos validados em cada etapa (a ordem das etapas vem do HTML). */
 const STEP_FIELDS: Record<string, (keyof Lead)[]> = {
@@ -91,6 +116,8 @@ export function initLeadForm() {
   let started = false;
   let sending = false;
   let finished = false;
+  /** event_id deste preenchimento (ver cabeçalho). */
+  let eventId: string | null = null;
   let lastPointer = 0;
   // Teclado aberto no instante do toque em "Continuar" (antes do botão roubar o foco).
   let typingAtTap = false;
@@ -346,12 +373,14 @@ export function initLeadForm() {
   /* Rascunho: sobrevive a recarregar, trocar de app e voltar ----------------- */
   let timer: number | undefined;
   function flush() {
-    if (!draftStore || finished) return;
+    // Só guarda rascunho depois de interação real: abrir e sair não cria rascunho vazio.
+    if (!draftStore || finished || (!started && !eventId)) return;
     clearTimeout(timer);
     const values = raw();
     for (const k of NOT_SAVED) delete values[k];
+    const draft: Draft = { ts: Date.now(), values: values as Draft['values'], index, ...(eventId ? { eventId } : {}) };
     try {
-      draftStore.setItem(DRAFT_KEY, JSON.stringify({ ts: Date.now(), values, index }));
+      draftStore.setItem(DRAFT_KEY, JSON.stringify(draft));
     } catch {
       /* armazenamento cheio: segue sem salvar */
     }
@@ -377,15 +406,14 @@ export function initLeadForm() {
   function restore() {
     let restored = false;
     try {
-      const saved = JSON.parse(draftStore?.getItem(DRAFT_KEY) ?? 'null') as {
-        ts: number;
-        values: Record<string, string | string[]>;
-        index: number;
-      } | null;
-      if (saved && Date.now() - saved.ts < DRAFT_TTL) {
+      const saved = JSON.parse(draftStore?.getItem(DRAFT_KEY) ?? 'null') as Draft | null;
+      if (saved && Date.now() - saved.ts < DRAFT_TTL && hasMeaningfulDraft(saved)) {
         apply(saved.values);
         restored = true;
+        // Já respondeu antes: o form_start daquele preenchimento já foi registrado.
         started = true;
+        // Mesmo preenchimento: um novo envio reaproveita o event_id da tentativa anterior.
+        if (typeof saved.eventId === 'string' && saved.eventId) eventId = saved.eventId;
         // Volta para a etapa em que parou, sem pular etapa incompleta.
         let target = 0;
         while (target < Math.min(saved.index, total - 1) && validStep(target, false)) target++;
@@ -456,19 +484,26 @@ export function initLeadForm() {
     sending = true;
     loading(true);
     status.hidden = true;
-    const eventId = uuid();
+    // Um event_id por preenchimento: criado na primeira tentativa, gravado no rascunho
+    // antes do envio e reaproveitado em qualquer nova tentativa. Se a planilha salvou
+    // mas a resposta se perdeu, o reenvio cai na deduplicação em vez de virar 2 linhas.
+    if (!eventId) eventId = uuid();
+    const id = eventId;
+    flush();
     track('form_submit', { step: total });
 
     let res: Response;
-    let data: { ok?: boolean; errors?: LeadErrors } = {};
+    let data: { ok?: boolean; saved?: boolean; errors?: LeadErrors } = {};
     try {
       // keepalive: a requisição termina mesmo se a pessoa fechar ou trocar de página.
+      // 25 s: mais que o pior caso da API (planilha 15 s + Conversions API 4 s), para o
+      // navegador não desistir antes de o servidor saber se o lead foi salvo.
       res = await fetch(form.action, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ ...raw(), tracking: { ...getAttribution(), event_id: eventId } }),
+        body: JSON.stringify({ ...raw(), tracking: { ...getAttribution(), event_id: id } }),
         keepalive: true,
-        signal: timeout(20000),
+        signal: timeout(25000),
       });
       data = (await res.json().catch(() => ({}))) as typeof data;
     } catch {
@@ -490,14 +525,15 @@ export function initLeadForm() {
       return;
     }
 
-    // Lead só é considerado enviado com res.ok (o servidor só responde ok depois de salvar).
+    // Erro (rede, timeout, 5xx, resposta inválida): event_id continua no rascunho para o reenvio.
     if (!res.ok || data.ok !== true) {
       sendFailed();
       return;
     }
 
-    // Salvo. Limpa o rascunho para não haver segundo envio acidental.
+    // Envio aceito. Limpa rascunho + event_id: um novo preenchimento terá outro ID.
     finished = true;
+    eventId = null;
     clearTimeout(timer);
     draftStore?.removeItem(DRAFT_KEY);
     try {
@@ -508,8 +544,10 @@ export function initLeadForm() {
     btnSubmit.removeAttribute('data-loading');
     submitLabel.textContent = 'Enviado';
 
-    // Conversão (GA4 generate_lead + Meta Lead) e só depois a página de obrigado.
-    await trackLead(eventId);
+    // Conversão (lead → GTM → GA4 generate_lead + Meta Lead) SOMENTE com `saved: true`,
+    // a confirmação de lead salvo. Envio descartado (`ok` sem `saved`) segue para a
+    // página de obrigado como antes, mas sem conversão.
+    if (data.saved === true) await trackLead(id);
     location.replace('/obrigado/');
   });
 

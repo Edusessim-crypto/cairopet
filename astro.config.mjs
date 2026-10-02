@@ -15,7 +15,10 @@ const fontsource = (path) => `./node_modules/@fontsource${path}`;
 export default defineConfig({
   site: SITE,
   output: 'static',
-  adapter: vercel(),
+  // /api/lead espera a planilha (até 15 s) e, se ativa, a Conversions API (até 4 s).
+  // Limite explícito para a Vercel nunca encerrar a função antes desse orçamento
+  // (o padrão varia por plano). O navegador espera 25 s — sempre mais que a API.
+  adapter: vercel({ maxDuration: 30 }),
   integrations: [
     sitemap({
       filter: (page) => !page.includes('/obrigado') && !page.includes('/formulario') && !page.includes('/apresentacao'),
@@ -86,8 +89,7 @@ export default defineConfig({
   env: {
     schema: {
       // Públicas (vão para o navegador) ------------------------------------
-      PUBLIC_META_PIXEL_ID: envField.string({ context: 'client', access: 'public', optional: true }),
-      PUBLIC_GA4_ID: envField.string({ context: 'client', access: 'public', optional: true }),
+      // GA4 e Meta Pixel do navegador vêm só pelo GTM (sem variáveis próprias).
       PUBLIC_GTM_ID: envField.string({ context: 'client', access: 'public', optional: true }),
       PUBLIC_INSTAGRAM_URL: envField.string({ context: 'client', access: 'public', optional: true }),
       PUBLIC_WHATSAPP_NUMBER: envField.string({ context: 'client', access: 'public', optional: true }),
@@ -97,6 +99,8 @@ export default defineConfig({
       // Secretas (somente servidor) -----------------------------------------
       LEAD_WEBHOOK_URL: envField.string({ context: 'server', access: 'secret', optional: true }),
       LEAD_WEBHOOK_TOKEN: envField.string({ context: 'server', access: 'secret', optional: true }),
+      // Conversions API: só servidor. Ativa com META_PIXEL_ID + META_CAPI_ACCESS_TOKEN.
+      META_PIXEL_ID: envField.string({ context: 'server', access: 'secret', optional: true }),
       META_CAPI_ACCESS_TOKEN: envField.string({ context: 'server', access: 'secret', optional: true }),
       META_CAPI_TEST_EVENT_CODE: envField.string({ context: 'server', access: 'secret', optional: true }),
       META_GRAPH_API_VERSION: envField.string({ context: 'server', access: 'public', default: 'v23.0' }),
