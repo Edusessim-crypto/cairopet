@@ -1,16 +1,19 @@
 ---
 /**
- * "Ver tudo o que está incluso": o PPT diz que cada plano inclui "tudo do"
- * plano anterior. Este painel abre essa soma, plano por plano, usando só os
- * itens do PPT (nada consolidado nem reescrito).
+ * "Ver tudo o que está incluso": tudo o que o plano entrega, sem repetição.
+ * Seções por nível (Presença → + Crescimento → + Performance); cada pilar
+ * aparece uma vez, na versão mais alta, com todas as atividades por trás dele.
  */
 import CheckIcon from './CheckIcon.astro';
-import { PLANS, planChain } from '../../data/presentation';
+import { PLANS, planSections } from '../../data/presentation';
+
+const order = PLANS.plans.map((p) => p.id);
 ---
 
 {
   PLANS.plans.map((plan) => {
-    const chain = planChain(plan);
+    const sections = planSections(plan);
+    const level = order.indexOf(plan.id);
     return (
       <dialog class="pd" id={`incluso-${plan.id}`} data-plan-dialog={plan.id} aria-labelledby={`incluso-${plan.id}-nome`}>
         <div class="pd__inner">
@@ -23,6 +26,7 @@ import { PLANS, planChain } from '../../data/presentation';
               R$ {plan.price}
               <span>{plan.period}</span>
             </p>
+            <p class="pd__text">{plan.text}</p>
             <button class="pd__close" type="button" data-plan-close aria-label="Fechar">
               <svg viewBox="0 0 20 20" aria-hidden="true">
                 <path d="m5 5 10 10M15 5 5 15" />
@@ -30,24 +34,43 @@ import { PLANS, planChain } from '../../data/presentation';
             </button>
           </header>
 
-          <div class="pd__groups" style={`--cols:${chain.length}`}>
-            {chain.map((p, i) => (
-              <section class:list={['pd__group', { 'is-current': p.id === plan.id }]}>
-                <h3 class="pd__group-name pr-mono">
-                  {i > 0 && <span aria-hidden="true">+ </span>}
-                  {p.name}
-                </h3>
-                <ul class="pd__items">
-                  {p.items.map((item) => (
-                    <li>
-                      <CheckIcon />
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
+          <ol class="pd__path pr-mono" aria-label="Evolução dos planos">
+            {PLANS.plans.map((p, i) => (
+              <li class:list={{ 'is-in': i <= level, 'is-current': i === level }}>{p.name}</li>
             ))}
-          </div>
+          </ol>
+
+          {sections.map(({ plan: tier, pillars }, i) => (
+            <section class="pd__section" aria-labelledby={`incluso-${plan.id}-${tier.id}`}>
+              <header class="pd__section-head">
+                <h3 class="pr-mono" id={`incluso-${plan.id}-${tier.id}`}>
+                  {i > 0 && <span aria-hidden="true">+ </span>}
+                  {tier.name}
+                </h3>
+                <p>{tier.role}</p>
+              </header>
+
+              <div class="pd__grid">
+                {pillars.map((pillar) => (
+                  <article class="pd__pillar">
+                    <h4 class="pd__pillar-name">
+                      {pillar.title}
+                      {pillar.evolved && <span class="pd__tag pr-mono">Evolução</span>}
+                    </h4>
+                    {pillar.detail && <p class="pd__detail">{pillar.detail}</p>}
+                    <ul class="pd__acts">
+                      {pillar.activities.map((activity) => (
+                        <li>
+                          <CheckIcon />
+                          <span>{activity}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </article>
+                ))}
+              </div>
+            </section>
+          ))}
         </div>
       </dialog>
     );
@@ -67,6 +90,8 @@ import { PLANS, planChain } from '../../data/presentation';
     color: var(--white);
     overscroll-behavior: contain;
     --focus: var(--white);
+    --pd-fg-2: rgb(255 255 255 / 0.68);
+    --pd-rule: rgb(255 255 255 / 0.16);
   }
 
   .pd::backdrop {
@@ -87,9 +112,9 @@ import { PLANS, planChain } from '../../data/presentation';
 
   .pd__inner {
     width: 100%;
-    max-width: 82rem;
+    max-width: 84rem;
     margin: auto;
-    padding: clamp(1.25rem, 5vw, 4rem) var(--px);
+    padding: clamp(1.25rem, 5vw, 3.5rem) var(--px);
   }
 
   .pd__head {
@@ -99,13 +124,11 @@ import { PLANS, planChain } from '../../data/presentation';
     align-items: baseline;
     gap: 0.5rem 1.5rem;
     padding-right: 3.5rem;
-    padding-bottom: clamp(1.25rem, 3dvh, 2rem);
-    border-bottom: 1px solid rgb(255 255 255 / 0.16);
   }
 
   .pd__eyebrow {
     flex-basis: 100%;
-    color: rgb(255 255 255 / 0.68);
+    color: var(--pd-fg-2);
   }
 
   .pd__name {
@@ -125,11 +148,19 @@ import { PLANS, planChain } from '../../data/presentation';
 
   .pd__price span {
     margin-left: 0.1em;
-    color: rgb(255 255 255 / 0.68);
+    color: var(--pd-fg-2);
     font-family: var(--font-body), system-ui, sans-serif;
     font-size: 0.5em;
     font-weight: 500;
     letter-spacing: 0;
+  }
+
+  .pd__text {
+    flex-basis: 100%;
+    max-width: 40em;
+    color: var(--pd-fg-2);
+    font-size: var(--fs-body);
+    line-height: 1.5;
   }
 
   .pd__close {
@@ -159,43 +190,110 @@ import { PLANS, planChain } from '../../data/presentation';
     stroke-linecap: round;
   }
 
-  .pd__groups {
-    display: grid;
-    gap: clamp(1.5rem, 4dvh, 2.5rem) var(--gap);
-    margin-top: clamp(1.5rem, 4dvh, 2.5rem);
+  /* PRESENÇA → CRESCIMENTO → PERFORMANCE: onde este plano está na evolução */
+  .pd__path {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+    margin-top: clamp(1.25rem, 3dvh, 2rem);
+    padding-block: 0.9rem;
+    border-block: 1px solid var(--pd-rule);
+    color: rgb(255 255 255 / 0.32);
   }
 
-  .pd__group-name {
-    margin-bottom: 1em;
-    color: rgb(255 255 255 / 0.68);
+  .pd__path li {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .pd__path li + li::before {
+    content: '→';
+    color: rgb(255 255 255 / 0.32);
+  }
+
+  .pd__path .is-in {
+    color: var(--pd-fg-2);
+  }
+
+  .pd__path .is-current {
+    color: var(--white);
     font-weight: 700;
   }
 
-  .pd__group.is-current .pd__group-name {
-    color: var(--white);
+  .pd__section {
+    margin-top: clamp(1.75rem, 4.5dvh, 3rem);
   }
 
-  .pd__items {
+  .pd__section-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.35rem 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .pd__section-head h3 {
+    font-weight: 700;
+  }
+
+  .pd__section-head p {
+    color: var(--pd-fg-2);
+    font-size: var(--fs-small);
+  }
+
+  .pd__grid {
     display: grid;
-    gap: 0.6em;
-    font-size: var(--fs-body);
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
+    gap: 0 var(--gap);
+  }
+
+  .pd__pillar {
+    padding-block: 1rem 1.25rem;
+    border-top: 1px solid var(--pd-rule);
+  }
+
+  .pd__pillar-name {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.6rem;
+    font-size: calc(var(--fs-body) * 1.06);
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: -0.015em;
+  }
+
+  .pd__tag {
+    padding: 0.2em 0.5em;
+    border: 1px solid rgb(255 255 255 / 0.4);
+    border-radius: 4px;
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+  }
+
+  .pd__detail {
+    margin-top: 0.3rem;
+    color: var(--pd-fg-2);
+    font-size: var(--fs-small);
     line-height: 1.4;
   }
 
-  .pd__items li {
+  .pd__acts {
+    display: grid;
+    gap: 0.45em;
+    margin-top: 0.85rem;
+    color: rgb(255 255 255 / 0.85);
+    font-size: var(--fs-small);
+    line-height: 1.4;
+  }
+
+  .pd__acts li {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
-    gap: 0.7em;
-  }
-
-  .pd__group:not(.is-current) .pd__items {
-    color: rgb(255 255 255 / 0.8);
-  }
-
-  @media (min-width: 48rem) {
-    .pd__groups {
-      grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
-    }
+    gap: 0.6em;
   }
 
   @media (prefers-reduced-motion: reduce) {

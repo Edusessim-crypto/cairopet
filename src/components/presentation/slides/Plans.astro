@@ -1,6 +1,6 @@
 ---
 /**
- * Planos e preços exatamente como no PPT. Desktop: três colunas, o plano
+ * Planos (preços do PPT; pilares em src/data/presentation.ts). Desktop: três colunas, o plano
  * "Mais escolhido" invertido (fundo branco). Celular: um plano por vez,
  * escolhido nos botões com o nome do plano.
  */
@@ -43,10 +43,13 @@ const nameOf = (id?: string) => PLANS.plans.find((p) => p.id === id)?.name;
           <div class="pl__body">
             {plan.extends && <p class="pl__extends pr-mono">Tudo do {nameOf(plan.extends)}, mais:</p>}
             <ul class="pl__items">
-              {plan.items.map((item) => (
+              {plan.pillars.map((pillar) => (
                 <li>
                   <CheckIcon />
-                  <span>{item}</span>
+                  <span>
+                    {pillar.title}
+                    {pillar.short && <span class="pl__short"> · {pillar.short}</span>}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -204,6 +207,10 @@ const nameOf = (id?: string) => PLANS.plans.find((p) => p.id === id)?.name;
     grid-template-columns: auto minmax(0, 1fr);
     gap: 0.65em;
     align-items: start;
+  }
+
+  .pl__short {
+    color: var(--c-fg-2);
   }
 
   .pl__more {
