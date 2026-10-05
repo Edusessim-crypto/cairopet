@@ -40,6 +40,8 @@ const ogImage = new URL(SITE.ogImage, Astro.site).href;
     <script is:inline>document.documentElement.classList.add('js');</script>
     <title>{title}</title>
     <meta name="description" content={description} />
+    <!-- Verificação do domínio www.cairopet.com no Gerenciador de Negócios da Meta (BM - CairoPet) -->
+    <meta name="facebook-domain-verification" content="9dxmzw1l73eb2uuenymhmt07uok18p" />
     <link rel="canonical" href={canonical} />
     {noindex && <meta name="robots" content="noindex, nofollow" />}
 
