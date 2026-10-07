@@ -108,7 +108,7 @@ const isTextField = (el: Element | null): el is HTMLInputElement | HTMLTextAreaE
 const plain = (s: string) =>
   s
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .trim();
 
@@ -141,6 +141,7 @@ export function initLeadForm() {
   /** event_id deste preenchimento (ver cabeçalho). */
   let eventId: string | null = null;
   const funnel = new Set<string>();
+  let warmed = false;
   let lastPointer = 0;
   // Teclado aberto no instante do toque em "Continuar" (antes do botão roubar o foco).
   let typingAtTap = false;
@@ -172,6 +173,18 @@ export function initLeadForm() {
   const stageOf = (i: number) => Number(steps[i]?.dataset.stage ?? 1);
   const stageScreens = (stage: number) => steps.filter((_, i) => stageOf(i) === stage).length;
   const posInStage = (i: number) => steps.slice(0, i).filter((_, j) => stageOf(j) === stageOf(i)).length;
+
+  /**
+   * Chegou na etapa 3: acorda a API e o Apps Script (sem gravar nada) e pré-carrega
+   * /obrigado/, para o envio e a troca de página serem mais rápidos. 1× por visita.
+   */
+  function warmUp() {
+    if (warmed) return;
+    warmed = true;
+    fetch('/api/lead?aquecer=1', { keepalive: true }).catch(() => {});
+    const link = Object.assign(document.createElement('link'), { rel: 'prefetch', href: '/obrigado/' });
+    document.head.append(link);
+  }
 
   /* Erros: sempre junto da pergunta ------------------------------------------ */
   function setError(name: string, message: string | null) {
@@ -261,6 +274,7 @@ export function initLeadForm() {
     form.classList.add('is-ready');
     personalize();
     trackOnce(`view:${stage}`, 'form_step_view', { step: stage, step_name: STAGES[stage - 1]?.name ?? '' });
+    if (stage === STAGES.length) warmUp();
     if (!animate) return;
 
     announce.textContent = `Etapa ${stage} de ${STAGES.length}, ${stageLabel}: ${step.dataset.label ?? ''}`;
@@ -527,11 +541,15 @@ export function initLeadForm() {
     status.hidden = false;
   }
 
+  let slowTimer: number | undefined;
   function loading(on: boolean) {
     btnSubmit.disabled = on;
     backButtons.forEach((b) => (b.disabled = on));
     btnSubmit.toggleAttribute('data-loading', on);
     submitLabel.textContent = on ? 'Enviando...' : SUBMIT_LABEL;
+    clearTimeout(slowTimer);
+    // Envio demorando: mostra que está andando, em vez de parecer travado.
+    if (on) slowTimer = window.setTimeout(() => (submitLabel.textContent = 'Salvando...'), 2500);
   }
 
   /** Falha: fica na página, mantém as respostas, libera o botão e oferece o WhatsApp. */
@@ -620,6 +638,7 @@ export function initLeadForm() {
     } catch {
       /* ignora */
     }
+    clearTimeout(slowTimer);
     btnSubmit.removeAttribute('data-loading');
     submitLabel.textContent = 'Enviado';
 

@@ -163,4 +163,26 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
   return isJson ? json(200, { ok: true, saved: true }) : redirect('/obrigado/');
 };
 
+/**
+ * Aquecimento: o formulário chama GET /api/lead?aquecer=1 quando a pessoa chega na
+ * última etapa. Acorda esta função e o Apps Script (doGet, que não grava nada), para o
+ * envio de verdade não pagar a "partida a frio" do Google. Server-Timing mostra o tempo
+ * da planilha (útil para medir sem criar lead).
+ */
+export const GET: APIRoute = async ({ url }) => {
+  if (url.searchParams.get('aquecer') !== '1') return json(405, { ok: false, message: 'Método não permitido.' });
+  const started = Date.now();
+  if (LEAD_WEBHOOK_URL && new URL(LEAD_WEBHOOK_URL).hostname === 'script.google.com') {
+    try {
+      await fetch(LEAD_WEBHOOK_URL, { redirect: 'follow', signal: AbortSignal.timeout(8000) });
+    } catch {
+      /* aquecimento é só otimização */
+    }
+  }
+  return new Response(null, {
+    status: 204,
+    headers: { 'Cache-Control': 'no-store', 'Server-Timing': `planilha;dur=${Date.now() - started}` },
+  });
+};
+
 export const ALL: APIRoute = () => json(405, { ok: false, message: 'Método não permitido.' });

@@ -1,307 +1,1776 @@
 /**
- * CairoPet — recebe os leads do site e grava uma linha por lead nesta planilha.
+ * CAIROPET — SISTEMA DE LEADS V3
  *
- * Instalação (uma vez):
- *  1. Crie uma Planilha Google (ex.: "Leads CairoPet").
- *  2. Extensões → Apps Script. Apague o conteúdo e cole este arquivo inteiro. Salve.
- *  3. Configurações do projeto (engrenagem) → Propriedades do script → Adicionar:
- *       TOKEN = uma senha longa qualquer (ex.: gere em https://1password.com/password-generator)
- *       NOTIFY_EMAIL = (opcional) e-mail(s) que recebem o aviso de lead novo, separados por vírgula.
- *                      Sem ela, o aviso vai para o e-mail da conta dona do script.
- *  4. Implantar → Nova implantação → tipo "App da Web":
- *       Executar como: Eu
- *       Quem pode acessar: Qualquer pessoa
- *     Autorize o acesso quando pedir. Copie a URL do app da Web (termina em /exec).
- *  5. Na Vercel (Settings → Environment Variables), crie:
- *       LEAD_WEBHOOK_URL = <URL do passo 4>?token=<o mesmo TOKEN do passo 3>
- *     e faça um novo deploy.
+ * Formulário atualizado
+ * Classificação automática
+ * Faturamento mínimo: R$ 50.000
+ * Notificações por e-mail (na hora ou em fila — ver instalarAvisos)
+ * Proteção contra duplicidades
  *
- * Se editar este script depois: Implantar → Gerenciar implantações → editar → Nova versão
+ * ABA ANTIGA: Leads
+ * ABA NOVA: Novos contatos
+ *
+ * Propriedades do script (Configurações do projeto → Propriedades do script):
+ *   TOKEN                = senha usada na URL do webhook (?token=...)
+ *   NOTIFICATION_EMAILS  = e-mail(s) que recebem o aviso de lead, separados por vírgula
+ *   AVISOS_EM_FILA       = criada por instalarAvisos (não precisa criar à mão)
+ *
+ * VELOCIDADE DO ENVIO (recomendado, uma vez):
+ *   No editor, selecione a função instalarAvisos e clique em Executar.
+ *   O lead passa a ser salvo e confirmado na hora, e o e-mail sai numa fila,
+ *   em até 1 minuto — o site não espera mais o e-mail para mostrar o "obrigado".
+ *   Para voltar ao e-mail imediato: executar desinstalarAvisos.
+ *
+ * Depois de editar: Implantar → Gerenciar implantações → editar → Nova versão
  * (a URL continua a mesma).
- *
- * Gravação POR CABEÇALHO: cada campo vai para a coluna com o seu nome na linha 1, não
- * para uma posição fixa. Colunas que faltam são criadas só no FINAL da planilha;
- * nenhuma coluna existente é apagada, renomeada ou reordenada, e linhas antigas nunca
- * são reescritas. Pode reordenar colunas ou acrescentar colunas próprias (ex.: "Status")
- * à vontade — basta não renomear os cabeçalhos abaixo.
  */
 
-const SHEET_NAME = 'Leads';
-
-/* Qualificação comercial ------------------------------------------------------------
- * Calculada só aqui, no servidor: não aparece no site nem no código da página.
- */
-
-/**
- * Faturamento mensal mínimo do perfil financeiro desejado (R$).
- * Para mudar o critério, altere só este número e publique uma nova versão.
- * O corte só funciona nos limites das faixas: 50000, 80000, 150000 ou 300000.
- * O site não oferece faixa abaixo de R$ 50 mil (decisão comercial, out/2026): com 50000,
- * ABAIXO DO PERFIL FINANCEIRO só aparece se o mínimo for aumentado (ou em lead antigo).
- */
-const FATURAMENTO_MINIMO = 50000;
-
-/**
- * Valor de referência de cada faixa do formulário = o seu limite inferior (R$/mês).
- * null = não informado. Os rótulos precisam ser idênticos aos do site
- * (FATURAMENTO_OPTIONS em src/lib/lead-schema.ts). Faixa desconhecida = não informado.
- */
-const FAIXAS_FATURAMENTO = {
-  'De R$ 50 mil a R$ 79.999': 50000,
-  'De R$ 80 mil a R$ 149.999': 80000,
-  'De R$ 150 mil a R$ 299.999': 150000,
-  'R$ 300 mil ou mais': 300000,
-  'Prefiro não informar': null,
-  // Faixas do formulário anterior (até out/2026): só para leads enviados durante a troca de versão.
-  'Até R$ 50 mil': 0,
-  'De R$ 50 mil a R$ 150 mil': 50000,
-  'De R$ 150 mil a R$ 500 mil': 150000,
-  'De R$ 500 mil a R$ 1 milhão': 500000,
-  'Acima de R$ 1 milhão': 1000000,
+const CAIRO_CONFIG = {
+  SHEET_NAME: 'Novos contatos',
+  TIMEZONE: 'America/Sao_Paulo',
+  FATURAMENTO_MINIMO: 50000,
+  NOME_REMETENTE: 'CairoPet Leads'
 };
 
-const DECISORES = ['Sim, sou o proprietário', 'Sim, sou responsável pelas contratações'];
-const URGENTES = ['Quero começar o quanto antes', 'Nos próximos 30 dias'];
-
-const CLASSIFICACAO = {
-  abaixo: 'ABAIXO DO PERFIL FINANCEIRO',
-  avaliacao: 'EM AVALIAÇÃO',
-  quente: 'QUENTE',
-  morno: 'MORNO',
-};
-
-/** Valor de referência do faturamento informado, ou null (não informado / faixa desconhecida). */
-function faturamentoReferencia(faixa) {
-  return Object.prototype.hasOwnProperty.call(FAIXAS_FATURAMENTO, faixa) ? FAIXAS_FATURAMENTO[faixa] : null;
-}
-
-/** Regras em ordem: a primeira que bater define a classificação. */
-function classificar(lead) {
-  const loja = lead.loja || {};
-  const q = lead.qualificacao || {};
-  const valor = faturamentoReferencia(loja.faturamento);
-  const tipo = loja.tipo_estabelecimento || loja.tipo_negocio;
-
-  if (valor !== null && valor < FATURAMENTO_MINIMO) return CLASSIFICACAO.abaixo;
-  if (valor === null || tipo === 'Outro') return CLASSIFICACAO.avaliacao;
-  if (DECISORES.indexOf(q.poder_decisao) !== -1 && URGENTES.indexOf(q.urgencia) !== -1) return CLASSIFICACAO.quente;
-  return CLASSIFICACAO.morno;
-}
-
-/* Colunas ----------------------------------------------------------------------------
- * [cabeçalho, leitura do payload]. As 30 primeiras são as originais da planilha e
- * continuam com os mesmos nomes. As que o formulário atual não pergunta mais
- * (Tamanho, Marketing atual, Investimento em anúncios, Tipo de negócio, Dores,
- * Objetivo, Momento, Decisor, Faixa de investimento, Contexto) ficam vazias nos
- * leads novos. Colunas novas entram sempre no fim desta lista.
- */
-const COLUMNS = [
-  ['Recebido em', (l) => Utilities.formatDate(new Date(l.recebido_em), 'America/Sao_Paulo', 'dd/MM/yyyy HH:mm:ss')],
-  ['Nome', (l) => l.contato.nome],
-  ['WhatsApp', (l) => l.contato.whatsapp],
-  ['Link WhatsApp', (l) => 'https://wa.me/' + String(l.contato.whatsapp_e164 || '').replace(/\D/g, '')],
-  ['Instagram', (l) => l.loja.instagram || ''],
-  ['Cidade', (l) => l.loja.cidade],
-  ['UF', (l) => l.loja.uf],
-  ['Agropecuária', (l) => l.loja.nome],
-  ['Tipo de negócio', (l) => l.loja.tipo_negocio],
-  ['Tamanho', (l) => l.loja.tamanho],
-  ['Faturamento', (l) => l.loja.faturamento],
-  ['Marketing atual', (l) => l.qualificacao.marketing_atual],
-  ['Investimento em anúncios', (l) => l.qualificacao.investimento_anuncios],
-  ['Dores', (l) => (l.qualificacao.dores || []).join(' | ')],
-  ['Objetivo', (l) => l.qualificacao.objetivo],
-  ['Momento', (l) => l.qualificacao.momento],
-  ['Decisor', (l) => l.qualificacao.decisor],
-  ['Faixa de investimento', (l) => l.qualificacao.faixa_investimento],
-  ['Contexto', (l) => l.qualificacao.contexto || ''],
-  ['LGPD aceita', (l) => (l.consentimento_lgpd && l.consentimento_lgpd.aceito ? 'Sim' : 'Não')],
-  ['utm_source', (l) => l.origem.utm_source || ''],
-  ['utm_medium', (l) => l.origem.utm_medium || ''],
-  ['utm_campaign', (l) => l.origem.utm_campaign || ''],
-  ['utm_content', (l) => l.origem.utm_content || ''],
-  ['utm_term', (l) => l.origem.utm_term || ''],
-  ['fbclid', (l) => l.origem.fbclid || ''],
-  ['gclid', (l) => l.origem.gclid || ''],
-  ['Página de entrada', (l) => l.origem.landing_page || ''],
-  ['Origem (referrer)', (l) => l.origem.referrer || ''],
-  ['ID do envio', (l) => l.origem.event_id || ''],
-  // Formulário de 3 etapas (out/2026)
-  ['Tipo de estabelecimento', (l) => l.loja.tipo_estabelecimento],
-  ['Dificuldades', (l) => (l.qualificacao.dificuldades || []).join(', ')],
-  ['Urgência', (l) => l.qualificacao.urgencia],
-  ['Poder de decisão', (l) => l.qualificacao.poder_decisao],
-  ['Classificação', (l, ctx) => ctx.classificacao],
+const CAIRO_HEADERS = [
+  'Recebido em',
+  'Agropecuária',
+  'Cidade',
+  'UF',
+  'Tipo de negócio',
+  'Faturamento',
+  'Dores',
+  'Momento',
+  'Decisor',
+  'Nome',
+  'WhatsApp',
+  'Link WhatsApp',
+  'Instagram',
+  'Perfil financeiro',
+  'Classificação',
+  'Pontuação',
+  'Motivo da classificação',
+  'LGPD aceita',
+  'utm_source',
+  'utm_medium',
+  'utm_campaign',
+  'utm_content',
+  'utm_term',
+  'fbclid',
+  'gclid',
+  'Página de entrada',
+  'Origem (referrer)',
+  'ID do envio'
 ];
 
-const ID_COLUMN = 'ID do envio';
+/**
+ * RECEBE OS LEADS
+ */
 
 function doPost(e) {
-  const token = PropertiesService.getScriptProperties().getProperty('TOKEN');
-  if (!token || (e.parameter && e.parameter.token) !== token) return json({ ok: false, error: 'unauthorized' });
+
+  // Uma leitura só das propriedades (token + fila de avisos).
+  const props = PropertiesService
+    .getScriptProperties()
+    .getProperties();
+
+  const token = props.TOKEN;
+
+  if (
+    !token ||
+    !e ||
+    !e.parameter ||
+    e.parameter.token !== token
+  ) {
+    return respostaJson_({
+      ok: false,
+      error: 'unauthorized'
+    });
+  }
+
+  let payload;
+
+  try {
+
+    payload = JSON.parse(
+      e.postData && e.postData.contents
+    );
+
+    if (
+      !payload ||
+      typeof payload !== 'object' ||
+      Array.isArray(payload)
+    ) {
+      return respostaJson_({
+        ok: false,
+        error: 'invalid_payload'
+      });
+    }
+
+  } catch (error) {
+
+    console.error('JSON inválido:', error);
+
+    return respostaJson_({
+      ok: false,
+      error: 'invalid_json'
+    });
+
+  }
 
   let lead;
+
   try {
-    lead = JSON.parse(e.postData.contents);
-  } catch (err) {
-    return json({ ok: false, error: 'invalid_json' });
+
+    lead = normalizarLead_(payload);
+
+    if (
+      !lead.nome ||
+      !lead.whatsapp ||
+      !lead.agropecuaria
+    ) {
+
+      console.error(
+        'Payload incompleto. Verificar campos.'
+      );
+
+      return respostaJson_({
+        ok: false,
+        error: 'missing_required_fields'
+      });
+
+    }
+
+  } catch (error) {
+
+    console.error(
+      'Erro ao normalizar lead:',
+      error
+    );
+
+    return respostaJson_({
+      ok: false,
+      error: 'invalid_payload'
+    });
+
   }
 
-  const result = salvarLead(lead);
-  if (result.duplicate) return json({ ok: true, duplicate: true });
-  // Aviso por e-mail só depois de a linha estar gravada; falha no e-mail não derruba o lead.
-  notificar(lead, result);
-  return json({ ok: true });
+  const lock = LockService.getScriptLock();
+
+  let bloqueado = false;
+
+  try {
+
+    lock.waitLock(20000);
+
+    bloqueado = true;
+
+  } catch (error) {
+
+    return respostaJson_({
+      ok: false,
+      error: 'lock_timeout'
+    });
+
+  }
+
+  let classificacao;
+
+  try {
+
+    const sheet = obterAbaLeads_();
+
+    const headers = garantirCabecalhos_(sheet);
+
+    if (
+      lead.eventId &&
+      jaRegistrado_(
+        sheet,
+        headers,
+        lead.eventId
+      )
+    ) {
+
+      return respostaJson_({
+        ok: true,
+        duplicate: true
+      });
+
+    }
+
+    classificacao = classificarLead_(lead);
+
+    const dados = montarDadosDaLinha_(
+      lead,
+      classificacao
+    );
+
+    const row = headers.map(
+      titulo => protegerCelula_(dados[titulo])
+    );
+
+    // SALVA PRIMEIRO (appendRow já grava; sem flush para não atrasar a resposta)
+
+    sheet.appendRow(row);
+
+  } catch (error) {
+
+    console.error(
+      'Erro ao salvar lead:',
+      error
+    );
+
+    return respostaJson_({
+      ok: false,
+      error: 'save_error'
+    });
+
+  } finally {
+
+    if (bloqueado) {
+      lock.releaseLock();
+    }
+
+  }
+
+  // NOTIFICA DEPOIS — fora da trava, para não segurar outros envios.
+  // Com a fila ligada (instalarAvisos), o site não espera o e-mail.
+
+  const enfileirado =
+    props.AVISOS_EM_FILA === '1' &&
+    enfileirarAviso_(lead, classificacao);
+
+  if (!enfileirado) {
+
+    try {
+
+      notificarNovoLead_(
+        lead,
+        classificacao
+      );
+
+    } catch (erroEmail) {
+
+      console.error(
+        'Lead salvo, mas e-mail falhou:',
+        erroEmail
+      );
+
+    }
+
+  }
+
+  return respostaJson_({
+    ok: true
+  });
+
 }
+
+/**
+ * VERIFICAÇÃO DO SERVIÇO
+ * O site também chama isto (sem gravar nada) para "acordar" o script
+ * quando a pessoa chega na última etapa do formulário.
+ */
 
 function doGet() {
-  return json({ ok: true, service: 'leads-cairopet' });
-}
 
-/** Grava o lead (ou reconhece o reenvio pelo ID do envio). */
-function salvarLead(lead) {
-  const lock = LockService.getScriptLock();
-  lock.waitLock(20000);
-  try {
-    const sheet = getSheet();
-    const headers = ensureHeaders(sheet);
-    const id = lead.origem && lead.origem.event_id;
-    // Um reenvio do mesmo formulário (mesmo ID) não duplica a linha.
-    if (id && alreadySaved(sheet, headers, id)) return { duplicate: true };
-    const ctx = { classificacao: classificar(lead) };
-    sheet.appendRow(buildRow(headers, lead, ctx));
-    SpreadsheetApp.flush();
-    return { duplicate: false, classificacao: ctx.classificacao, row: sheet.getLastRow() };
-  } finally {
-    lock.releaseLock();
-  }
-}
-
-function getSheet() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = ss.getSheetByName(SHEET_NAME);
-  if (!sheet) sheet = ss.insertSheet(SHEET_NAME);
-  if (sheet.getLastRow() === 0) {
-    sheet.appendRow(COLUMNS.map(([name]) => name));
-    sheet.setFrozenRows(1);
-    sheet.getRange(1, 1, 1, COLUMNS.length).setFontWeight('bold');
-  }
-  return sheet;
-}
-
-/** Cabeçalhos atuais da linha 1; os que faltarem são criados depois da última coluna usada. */
-function ensureHeaders(sheet) {
-  const lastCol = sheet.getLastColumn();
-  const headers = lastCol ? sheet.getRange(1, 1, 1, lastCol).getValues()[0].map((h) => String(h).trim()) : [];
-  const missing = COLUMNS.map(([name]) => name).filter((name) => headers.indexOf(name) === -1);
-  if (missing.length) {
-    const extra = headers.length + missing.length - sheet.getMaxColumns();
-    if (extra > 0) sheet.insertColumnsAfter(sheet.getMaxColumns(), extra);
-    sheet.getRange(1, headers.length + 1, 1, missing.length).setValues([missing]).setFontWeight('bold');
-    headers.push(...missing);
-  }
-  return headers;
-}
-
-/** Linha na ordem dos cabeçalhos da planilha; colunas sem campo correspondente ficam vazias. */
-function buildRow(headers, lead, ctx) {
-  const row = headers.map(() => '');
-  COLUMNS.forEach(([name, get]) => {
-    const i = headers.indexOf(name);
-    if (i === -1) return;
-    let v;
-    try {
-      v = get(lead, ctx);
-    } catch (err) {
-      v = '';
-    }
-    row[i] = cell(v);
+  return respostaJson_({
+    ok: true,
+    service: 'leads-cairopet'
   });
-  return row;
+
 }
 
-/** Texto digitado no site nunca vira fórmula na planilha. */
-function cell(v) {
-  if (v == null) return '';
-  return typeof v === 'string' && v.charAt(0) === '=' ? "'" + v : v;
-}
+/**
+ * BUSCA VALORES NO PAYLOAD
+ */
 
-function alreadySaved(sheet, headers, id) {
-  const col = headers.indexOf(ID_COLUMN) + 1;
-  const last = sheet.getLastRow();
-  if (!col || last < 2) return false;
-  const from = Math.max(2, last - 199);
-  const values = sheet.getRange(from, col, last - from + 1, 1).getValues();
-  return values.some((r) => r[0] === id);
-}
+function primeiro_(obj, caminhos, fallback) {
 
-/* Aviso de lead novo -------------------------------------------------------------- */
+  for (let i = 0; i < caminhos.length; i++) {
 
-function notificar(lead, result) {
-  try {
-    const to =
-      PropertiesService.getScriptProperties().getProperty('NOTIFY_EMAIL') || Session.getEffectiveUser().getEmail();
-    if (!to) return;
-    const loja = lead.loja || {};
-    const q = lead.qualificacao || {};
-    const contato = lead.contato || {};
-    const origem = lead.origem || {};
-    const linhas = [
-      'Classificação: ' + (result.classificacao || ''),
-      '',
-      'Agropecuária: ' + (loja.nome || ''),
-      'Cidade: ' + (loja.cidade || '') + '/' + (loja.uf || ''),
-      'Tipo: ' + (loja.tipo_estabelecimento || loja.tipo_negocio || ''),
-      'Faturamento: ' + (loja.faturamento || ''),
-      'Dificuldades: ' + (q.dificuldades || q.dores || []).join(', '),
-      'Quando quer começar: ' + (q.urgencia || q.momento || ''),
-      'Decisão: ' + (q.poder_decisao || q.decisor || ''),
-      '',
-      'Nome: ' + (contato.nome || ''),
-      'WhatsApp: ' + (contato.whatsapp || '') + '  →  https://wa.me/' + String(contato.whatsapp_e164 || '').replace(/\D/g, ''),
-      'Instagram: ' + (loja.instagram || '—'),
-      '',
-      'Origem: ' + ([origem.utm_source, origem.utm_medium, origem.utm_campaign].filter(Boolean).join(' / ') || 'direto'),
-      'Planilha: ' + SpreadsheetApp.getActiveSpreadsheet().getUrl() + (result.row ? ' (linha ' + result.row + ')' : ''),
-    ];
-    MailApp.sendEmail({
-      to: to,
-      subject: '[' + (result.classificacao || 'LEAD') + '] Novo lead CairoPet — ' + (loja.nome || '') + ' (' + (loja.cidade || '') + '/' + (loja.uf || '') + ')',
-      body: linhas.join('\n'),
-    });
-  } catch (err) {
-    console.error('Aviso por e-mail falhou:', err);
+    const valor = caminhos[i]
+      .split('.')
+      .reduce(
+        (atual, parte) =>
+          atual != null
+            ? atual[parte]
+            : undefined,
+        obj
+      );
+
+    if (
+      valor !== undefined &&
+      valor !== null &&
+      valor !== ''
+    ) {
+      return valor;
+    }
+
   }
+
+  return fallback === undefined
+    ? ''
+    : fallback;
+
 }
 
-/* Utilitários para rodar no editor (Executar) --------------------------------------- */
+/**
+ * NORMALIZA OS DADOS
+ */
 
-/** Envia um aviso de exemplo, sem gravar nada na planilha. */
-function testarEmail() {
-  notificar(
-    {
-      contato: { nome: 'Teste CairoPet', whatsapp: '(34) 99999-1234', whatsapp_e164: '+5534999991234' },
-      loja: { nome: 'Agropecuária Teste', cidade: 'Uberaba', uf: 'MG', tipo_estabelecimento: 'Agropecuária', faturamento: 'De R$ 80 mil a R$ 149.999' },
-      qualificacao: { dificuldades: ['Estoque parado'], urgencia: 'Nos próximos 30 dias', poder_decisao: 'Sim, sou o proprietário' },
-      origem: { utm_campaign: 'TESTE' },
-    },
-    { classificacao: 'TESTE' },
+function normalizarLead_(p) {
+
+  const nome = texto_(primeiro_(p, [
+    'contato.nome',
+    'nome',
+    'contact.name',
+    'name'
+  ]));
+
+  const whatsapp = texto_(primeiro_(p, [
+    'contato.whatsapp',
+    'whatsapp',
+    'telefone',
+    'contact.phone'
+  ]));
+
+  const numeroE164 = telefoneE164_(
+    primeiro_(p, [
+      'contato.whatsapp_e164',
+      'whatsapp_e164',
+      'whatsappE164'
+    ], whatsapp)
   );
+
+  const brutoDores = primeiro_(p, [
+    'qualificacao.dores',
+    'dores',
+    'dificuldades',
+    'qualificacao.dificuldades',
+    'principais_dificuldades'
+  ]);
+
+  const dores = Array.isArray(brutoDores)
+    ? brutoDores.map(texto_).filter(Boolean)
+    : (
+        texto_(brutoDores)
+          ? [texto_(brutoDores)]
+          : []
+      );
+
+  const dataRecebida = primeiro_(p, [
+    'recebido_em',
+    'recebidoEm'
+  ]);
+
+  const tentativaData = dataRecebida
+    ? new Date(dataRecebida)
+    : new Date();
+
+  const dataValida = isNaN(
+    tentativaData.getTime()
+  )
+    ? new Date()
+    : tentativaData;
+
+  const origem = {
+
+    utm_source: texto_(primeiro_(p, [
+      'origem.utm_source',
+      'utm_source'
+    ])),
+
+    utm_medium: texto_(primeiro_(p, [
+      'origem.utm_medium',
+      'utm_medium'
+    ])),
+
+    utm_campaign: texto_(primeiro_(p, [
+      'origem.utm_campaign',
+      'utm_campaign'
+    ])),
+
+    utm_content: texto_(primeiro_(p, [
+      'origem.utm_content',
+      'utm_content'
+    ])),
+
+    utm_term: texto_(primeiro_(p, [
+      'origem.utm_term',
+      'utm_term'
+    ])),
+
+    fbclid: texto_(primeiro_(p, [
+      'origem.fbclid',
+      'fbclid'
+    ])),
+
+    gclid: texto_(primeiro_(p, [
+      'origem.gclid',
+      'gclid'
+    ])),
+
+    landing_page: texto_(primeiro_(p, [
+      'origem.landing_page',
+      'landing_page'
+    ])),
+
+    referrer: texto_(primeiro_(p, [
+      'origem.referrer',
+      'referrer'
+    ]))
+
+  };
+
+  return {
+
+    recebidoEm: Utilities.formatDate(
+      dataValida,
+      CAIRO_CONFIG.TIMEZONE,
+      'dd/MM/yyyy HH:mm:ss'
+    ),
+
+    nome: nome,
+
+    whatsapp: whatsapp,
+
+    whatsappE164: numeroE164,
+
+    linkWhatsApp: numeroE164
+      ? 'https://wa.me/' + numeroE164
+      : '',
+
+    instagram: texto_(primeiro_(p, [
+      'loja.instagram',
+      'instagram',
+      'instagram_loja'
+    ])),
+
+    cidade: texto_(primeiro_(p, [
+      'loja.cidade',
+      'cidade'
+    ])),
+
+    uf: texto_(primeiro_(p, [
+      'loja.uf',
+      'uf',
+      'estado'
+    ])),
+
+    agropecuaria: texto_(primeiro_(p, [
+      'loja.nome',
+      'agropecuaria',
+      'nome_agropecuaria',
+      'nome_loja',
+      'empresa'
+    ])),
+
+    // O site manda em loja.tipo_estabelecimento. Não usar o campo "tipo" da raiz:
+    // nele vem "lead_site_cairopet" (identificador do envio), não o tipo da loja.
+    tipo: texto_(primeiro_(p, [
+      'loja.tipo_estabelecimento',
+      'loja.tipo_negocio',
+      'tipo_estabelecimento',
+      'tipo_negocio'
+    ])),
+
+    tamanho: texto_(primeiro_(p, [
+      'loja.tamanho',
+      'tamanho'
+    ])),
+
+    faturamento: texto_(primeiro_(p, [
+      'loja.faturamento',
+      'loja.faturamento_mensal',
+      'qualificacao.faturamento',
+      'faturamento',
+      'faturamento_mensal',
+      'faturamentoMensal'
+    ])),
+
+    marketingAtual: texto_(primeiro_(p, [
+      'qualificacao.marketing_atual',
+      'marketing_atual'
+    ])),
+
+    investimentoAnuncios: texto_(primeiro_(p, [
+      'qualificacao.investimento_anuncios',
+      'investimento_anuncios'
+    ])),
+
+    dores: dores,
+
+    objetivo: texto_(primeiro_(p, [
+      'qualificacao.objetivo',
+      'objetivo'
+    ])),
+
+    momento: texto_(primeiro_(p, [
+      'qualificacao.momento',
+      'qualificacao.urgencia',
+      'momento',
+      'urgencia',
+      'prazo_contratacao'
+    ])),
+
+    decisor: texto_(primeiro_(p, [
+      'qualificacao.decisor',
+      'qualificacao.poder_decisao',
+      'decisor',
+      'poder_decisao',
+      'responsavel_contratacao'
+    ])),
+
+    faixaInvestimento: texto_(primeiro_(p, [
+      'qualificacao.faixa_investimento',
+      'faixa_investimento'
+    ])),
+
+    contexto: texto_(primeiro_(p, [
+      'qualificacao.contexto',
+      'contexto'
+    ])),
+
+    lgpd: primeiro_(p, [
+      'consentimento_lgpd.aceito',
+      'lgpd_aceita',
+      'lgpd_aceito'
+    ], null),
+
+    origem: origem,
+
+    eventId: texto_(primeiro_(p, [
+      'origem.event_id',
+      'origem.eventId',
+      'event_id',
+      'eventId'
+    ]))
+
+  };
+
 }
 
-/** Mostra no log a classificação de um exemplo de cada categoria, sem gravar nada. */
+/**
+ * UTILITÁRIOS
+ */
+
+function texto_(valor) {
+
+  return valor === null ||
+    valor === undefined
+    ? ''
+    : String(valor).trim();
+
+}
+
+function telefoneE164_(numero) {
+
+  const digitos = texto_(numero)
+    .replace(/\D/g, '');
+
+  if (
+    (digitos.length === 12 ||
+      digitos.length === 13) &&
+    digitos.startsWith('55')
+  ) {
+    return digitos;
+  }
+
+  if (
+    digitos.length === 10 ||
+    digitos.length === 11
+  ) {
+    return '55' + digitos;
+  }
+
+  return '';
+
+}
+
+function semAcentos_(valor) {
+
+  return texto_(valor)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+}
+
+/**
+ * QUALIFICAÇÃO FINANCEIRA
+ */
+
+function perfilFinanceiro_(faixa) {
+
+  const s = semAcentos_(faixa);
+
+  if (
+    !s ||
+    /prefiro|nao inform|nao sei|indefin|nao declarado/.test(s)
+  ) {
+    return 'INDETERMINADO';
+  }
+
+  const exp =
+    /(\d{1,3}(?:\.\d{3})+|\d+(?:[.,]\d+)?)\s*(milhoes|milhao|mil|k)?/g;
+
+  const achados = [];
+
+  let match;
+
+  while ((match = exp.exec(s)) !== null) {
+
+    const numero = match[1];
+    const unidade = match[2] || '';
+
+    let valor;
+
+    if (unidade) {
+
+      valor = Number(
+        numero
+          .replace(/\./g, '')
+          .replace(',', '.')
+      ) * (
+        /milhao/.test(unidade)
+          ? 1000000
+          : 1000
+      );
+
+    } else {
+
+      valor = Number(
+        numero
+          .replace(/\./g, '')
+          .replace(',', '.')
+      );
+
+    }
+
+    if (isFinite(valor)) {
+      achados.push(valor);
+    }
+
+  }
+
+  if (achados.length === 0) {
+    return 'INDETERMINADO';
+  }
+
+  if (
+    /\bmil\b|\bk\b/.test(s) &&
+    achados.some(n => n >= 1000)
+  ) {
+
+    for (let i = 0; i < achados.length; i++) {
+
+      if (achados[i] < 1000) {
+        achados[i] *= 1000;
+      }
+
+    }
+
+  }
+
+  const minimo =
+    CAIRO_CONFIG.FATURAMENTO_MINIMO;
+
+  const menor = Math.min.apply(null, achados);
+  const maior = Math.max.apply(null, achados);
+
+  const abaixo =
+    /menos de|abaixo de|inferior a/.test(s);
+
+  const ate =
+    /\bate\b|no maximo/.test(s);
+
+  const acima =
+    /acima de|mais de|a partir de|no minimo|ou mais|\+/.test(s);
+
+  if (abaixo) {
+    return maior <= minimo
+      ? 'ABAIXO'
+      : 'INDETERMINADO';
+  }
+
+  if (ate) {
+    return maior < minimo
+      ? 'ABAIXO'
+      : 'INDETERMINADO';
+  }
+
+  if (acima) {
+    return menor >= minimo
+      ? 'DENTRO'
+      : 'INDETERMINADO';
+  }
+
+  if (menor >= minimo) {
+    return 'DENTRO';
+  }
+
+  if (maior < minimo) {
+    return 'ABAIXO';
+  }
+
+  return 'INDETERMINADO';
+
+}
+
+/**
+ * URGÊNCIA
+ */
+
+function tipoDeUrgencia_(resposta) {
+
+  const s = semAcentos_(resposta);
+
+  if (
+    /quanto antes|imediat|agora|urgente|esta semana|o mais rapido/.test(s)
+  ) {
+    return 'IMEDIATA';
+  }
+
+  if (
+    /30 dias|proximo mes|ate um mes|ate 1 mes|em um mes/.test(s)
+  ) {
+    return 'ATE_30_DIAS';
+  }
+
+  if (
+    /2 ou 3|dois ou tres|2 meses|3 meses|60 dias|90 dias|futuramente/.test(s)
+  ) {
+    return 'FUTURA';
+  }
+
+  if (
+    /pesquis|avali|nao sei|indefin|sem previsao/.test(s)
+  ) {
+    return 'PESQUISANDO';
+  }
+
+  return 'NAO_INFORMADA';
+
+}
+
+/**
+ * PODER DE DECISÃO
+ */
+
+function tipoDeDecisor_(resposta) {
+
+  const s = semAcentos_(resposta);
+
+  if (
+    /decido junto|junto com|outra pessoa|compartilh|com socios|socios/.test(s)
+  ) {
+    return 'CONJUNTO';
+  }
+
+  if (
+    /nao,|nao sou|participo|influenc/.test(s)
+  ) {
+    return 'PARTICIPANTE';
+  }
+
+  if (
+    /sou o propriet|sou a propriet|proprietari|sou o dono|sou a dona|responsavel pelas contrat|sou responsavel|eu decido|^sim$/.test(s)
+  ) {
+    return 'DECISOR';
+  }
+
+  return 'NAO_INFORMADO';
+
+}
+
+/**
+ * TIPO DE ESTABELECIMENTO
+ */
+
+function tipoDeEstabelecimento_(resposta) {
+
+  const s = semAcentos_(resposta);
+
+  if (
+    /agropecu|casa de racao|casa de racoes/.test(s)
+  ) {
+    return 'COMPATIVEL';
+  }
+
+  return 'AVALIAR';
+
+}
+
+/**
+ * CLASSIFICAÇÃO AUTOMÁTICA
+ */
+
+function classificarLead_(lead) {
+
+  const perfil = perfilFinanceiro_(
+    lead.faturamento
+  );
+
+  const urgencia = tipoDeUrgencia_(
+    lead.momento
+  );
+
+  const decisor = tipoDeDecisor_(
+    lead.decisor
+  );
+
+  const estabelecimento =
+    tipoDeEstabelecimento_(lead.tipo);
+
+  let pontos = 0;
+
+  if (perfil === 'DENTRO') {
+    pontos += 40;
+  }
+
+  if (urgencia === 'IMEDIATA') {
+    pontos += 30;
+  } else if (urgencia === 'ATE_30_DIAS') {
+    pontos += 25;
+  } else if (urgencia === 'FUTURA') {
+    pontos += 10;
+  }
+
+  if (decisor === 'DECISOR') {
+    pontos += 20;
+  } else if (decisor === 'CONJUNTO') {
+    pontos += 12;
+  } else if (decisor === 'PARTICIPANTE') {
+    pontos += 5;
+  }
+
+  if (estabelecimento === 'COMPATIVEL') {
+    pontos += 10;
+  }
+
+  let classe;
+  let motivo;
+
+  if (perfil === 'ABAIXO') {
+
+    classe = 'ABAIXO DO PERFIL FINANCEIRO';
+
+    motivo =
+      'Faturamento inferior a R$ 50 mil/mês.';
+
+  } else if (perfil === 'INDETERMINADO') {
+
+    classe = 'EM AVALIAÇÃO';
+
+    motivo =
+      'Faturamento não informado ou indeterminado.';
+
+  } else if (estabelecimento !== 'COMPATIVEL') {
+
+    classe = 'EM AVALIAÇÃO';
+
+    motivo =
+      'Confirmar tipo de estabelecimento.';
+
+  } else if (
+    decisor === 'DECISOR' &&
+    (
+      urgencia === 'IMEDIATA' ||
+      urgencia === 'ATE_30_DIAS'
+    )
+  ) {
+
+    classe = 'QUENTE';
+
+    motivo =
+      'Faturamento compatível, decisor direto e intenção de começar em até 30 dias.';
+
+  } else {
+
+    classe = 'MORNO';
+
+    motivo =
+      'Faturamento compatível; acompanhar prazo ou responsável pela decisão.';
+
+  }
+
+  return {
+    perfil: perfil,
+    classe: classe,
+    pontos: pontos,
+    motivo: motivo
+  };
+
+}
+
+/**
+ * ORGANIZA DADOS PARA A PLANILHA
+ */
+
+function montarDadosDaLinha_(lead, resultado) {
+
+  return {
+
+    'Recebido em': lead.recebidoEm,
+
+    'Agropecuária': lead.agropecuaria,
+
+    'Cidade': lead.cidade,
+
+    'UF': lead.uf,
+
+    'Tipo de negócio': lead.tipo,
+
+    'Faturamento': lead.faturamento,
+
+    'Dores': lead.dores.join(' | '),
+
+    'Momento': lead.momento,
+
+    'Decisor': lead.decisor,
+
+    'Nome': lead.nome,
+
+    'WhatsApp': lead.whatsapp,
+
+    'Link WhatsApp': lead.linkWhatsApp,
+
+    'Instagram': lead.instagram,
+
+    'Perfil financeiro': resultado.perfil,
+
+    'Classificação': resultado.classe,
+
+    'Pontuação': resultado.pontos,
+
+    'Motivo da classificação': resultado.motivo,
+
+    'LGPD aceita':
+      lead.lgpd === null
+        ? ''
+        : (
+            /^(true|1|sim|yes|aceito)$/i.test(
+              String(lead.lgpd)
+            )
+              ? 'Sim'
+              : 'Não'
+          ),
+
+    'utm_source': lead.origem.utm_source,
+
+    'utm_medium': lead.origem.utm_medium,
+
+    'utm_campaign': lead.origem.utm_campaign,
+
+    'utm_content': lead.origem.utm_content,
+
+    'utm_term': lead.origem.utm_term,
+
+    'fbclid': lead.origem.fbclid,
+
+    'gclid': lead.origem.gclid,
+
+    'Página de entrada':
+      lead.origem.landing_page,
+
+    'Origem (referrer)':
+      lead.origem.referrer,
+
+    'ID do envio': lead.eventId
+
+  };
+
+}
+
+/**
+ * PROTEGE CONTRA FÓRMULAS INDEVIDAS
+ */
+
+function protegerCelula_(valor) {
+
+  if (
+    valor === undefined ||
+    valor === null
+  ) {
+    return '';
+  }
+
+  if (
+    typeof valor === 'number' ||
+    typeof valor === 'boolean'
+  ) {
+    return valor;
+  }
+
+  const texto = String(valor);
+
+  return /^\s*[=+\-@]/.test(texto)
+    ? "'" + texto
+    : texto;
+
+}
+
+/**
+ * LOCALIZA A ABA NOVOS CONTATOS
+ */
+
+function obterAbaLeads_() {
+
+  const ss =
+    SpreadsheetApp.getActiveSpreadsheet();
+
+  if (!ss) {
+    throw new Error(
+      'Script não vinculado à planilha.'
+    );
+  }
+
+  const aba = ss.getSheetByName(
+    CAIRO_CONFIG.SHEET_NAME
+  );
+
+  if (!aba) {
+    throw new Error(
+      'Aba Novos contatos não encontrada.'
+    );
+  }
+
+  return aba;
+
+}
+
+/**
+ * VERIFICA CABEÇALHOS
+ */
+
+function garantirCabecalhos_(sheet) {
+
+  if (sheet.getLastRow() === 0) {
+
+    garantirQuantidadeColunas_(
+      sheet,
+      CAIRO_HEADERS.length
+    );
+
+    sheet
+      .getRange(
+        1,
+        1,
+        1,
+        CAIRO_HEADERS.length
+      )
+      .setValues([CAIRO_HEADERS]);
+
+    sheet.setFrozenRows(1);
+
+    sheet
+      .getRange(
+        1,
+        1,
+        1,
+        CAIRO_HEADERS.length
+      )
+      .setFontWeight('bold');
+
+    return CAIRO_HEADERS.slice();
+
+  }
+
+  const quantidade = Math.max(
+    sheet.getLastColumn(),
+    1
+  );
+
+  const headers = sheet
+    .getRange(1, 1, 1, quantidade)
+    .getValues()[0]
+    .map(valor => texto_(valor));
+
+  const faltantes = CAIRO_HEADERS.filter(
+    header => headers.indexOf(header) === -1
+  );
+
+  if (faltantes.length) {
+
+    const primeiraColunaNova =
+      headers.length + 1;
+
+    garantirQuantidadeColunas_(
+      sheet,
+      headers.length + faltantes.length
+    );
+
+    sheet
+      .getRange(
+        1,
+        primeiraColunaNova,
+        1,
+        faltantes.length
+      )
+      .setValues([faltantes]);
+
+    sheet
+      .getRange(
+        1,
+        primeiraColunaNova,
+        1,
+        faltantes.length
+      )
+      .setFontWeight('bold');
+
+    headers.push.apply(
+      headers,
+      faltantes
+    );
+
+  }
+
+  return headers;
+
+}
+
+/**
+ * GARANTE COLUNAS SUFICIENTES
+ */
+
+function garantirQuantidadeColunas_(
+  sheet,
+  minimo
+) {
+
+  const disponiveis =
+    sheet.getMaxColumns();
+
+  if (disponiveis < minimo) {
+
+    sheet.insertColumnsAfter(
+      disponiveis,
+      minimo - disponiveis
+    );
+
+  }
+
+}
+
+/**
+ * VERIFICA DUPLICIDADES
+ */
+
+function jaRegistrado_(sheet, headers, id) {
+
+  const idColuna =
+    headers.indexOf('ID do envio') + 1;
+
+  if (!idColuna) {
+    throw new Error(
+      'Coluna ID do envio não encontrada.'
+    );
+  }
+
+  const lastRow = sheet.getLastRow();
+
+  if (lastRow < 2) {
+    return false;
+  }
+
+  const encontrados = sheet
+    .getRange(
+      2,
+      idColuna,
+      lastRow - 1,
+      1
+    )
+    .createTextFinder(String(id))
+    .matchEntireCell(true)
+    .findNext();
+
+  return encontrados !== null;
+
+}
+
+/**
+ * FILA DE AVISOS (e-mail fora do envio)
+ *
+ * Cada aviso pendente vira uma propriedade do script (AVISO_...). Um gatilho
+ * de 1 em 1 minuto (processarAvisos) envia e apaga. Se não for possível
+ * enfileirar, o doPost manda o e-mail na hora, como antes.
+ */
+
+function enfileirarAviso_(lead, classificacao) {
+
+  try {
+
+    const chave =
+      'AVISO_' +
+      Date.now() +
+      '_' +
+      Math.random().toString(36).slice(2, 8);
+
+    PropertiesService
+      .getScriptProperties()
+      .setProperty(
+        chave,
+        JSON.stringify({
+          lead: lead,
+          classificacao: classificacao
+        })
+      );
+
+    return true;
+
+  } catch (error) {
+
+    console.error(
+      'Não foi possível enfileirar o aviso:',
+      error
+    );
+
+    return false;
+
+  }
+
+}
+
+/**
+ * Rodado pelo gatilho a cada minuto: envia os avisos pendentes
+ * (cada um no máximo uma vez).
+ */
+
+function processarAvisos() {
+
+  // Trava própria (não a do doPost), para não atrasar envios do site.
+  const lock = LockService.getDocumentLock();
+
+  if (!lock.tryLock(1000)) {
+    return;
+  }
+
+  try {
+
+    const props =
+      PropertiesService.getScriptProperties();
+
+    const todas = props.getProperties();
+
+    Object.keys(todas)
+      .filter(chave => chave.indexOf('AVISO_') === 0)
+      .sort()
+      .forEach(chave => {
+
+        props.deleteProperty(chave);
+
+        try {
+
+          const aviso = JSON.parse(todas[chave]);
+
+          notificarNovoLead_(
+            aviso.lead,
+            aviso.classificacao
+          );
+
+        } catch (error) {
+
+          console.error(
+            'Aviso não enviado:',
+            chave,
+            error
+          );
+
+        }
+
+      });
+
+  } finally {
+
+    lock.releaseLock();
+
+  }
+
+}
+
+/**
+ * Rodar UMA vez no editor: liga a fila de avisos
+ * (gatilho de 1 em 1 minuto). Pode rodar de novo sem duplicar.
+ */
+
+function instalarAvisos() {
+
+  ScriptApp.getProjectTriggers()
+    .filter(t => t.getHandlerFunction() === 'processarAvisos')
+    .forEach(t => ScriptApp.deleteTrigger(t));
+
+  ScriptApp.newTrigger('processarAvisos')
+    .timeBased()
+    .everyMinutes(1)
+    .create();
+
+  PropertiesService
+    .getScriptProperties()
+    .setProperty('AVISOS_EM_FILA', '1');
+
+  console.log(
+    'Fila de avisos ligada: os e-mails saem em até 1 minuto.'
+  );
+
+}
+
+/**
+ * Volta ao e-mail imediato: desliga o gatilho
+ * e envia o que estiver pendente.
+ */
+
+function desinstalarAvisos() {
+
+  ScriptApp.getProjectTriggers()
+    .filter(t => t.getHandlerFunction() === 'processarAvisos')
+    .forEach(t => ScriptApp.deleteTrigger(t));
+
+  PropertiesService
+    .getScriptProperties()
+    .deleteProperty('AVISOS_EM_FILA');
+
+  processarAvisos();
+
+  console.log(
+    'Fila de avisos desligada: os e-mails voltam a sair na hora.'
+  );
+
+}
+
+/**
+ * NOTIFICAÇÃO POR E-MAIL
+ */
+
+function notificarNovoLead_(lead, resultado) {
+
+  const emails = PropertiesService
+    .getScriptProperties()
+    .getProperty('NOTIFICATION_EMAILS');
+
+  if (!emails) {
+
+    console.log(
+      'E-mails não configurados.'
+    );
+
+    return;
+
+  }
+
+  const rotulo =
+    resultado.classe === 'QUENTE'
+      ? '🔥 LEAD QUENTE'
+      : resultado.classe === 'MORNO'
+        ? '🟡 LEAD MORNO'
+        : resultado.classe ===
+          'ABAIXO DO PERFIL FINANCEIRO'
+          ? '⚪ ABAIXO DO PERFIL'
+          : '🔵 LEAD EM AVALIAÇÃO';
+
+  const assunto = (
+    rotulo +
+    ' — ' +
+    lead.agropecuaria
+  )
+    .replace(/[\r\n]+/g, ' ')
+    .slice(0, 180);
+
+  const linha = (campo, valor) => {
+
+    if (!valor && valor !== 0) {
+      return '';
+    }
+
+    return `
+      <tr>
+        <td style="
+          padding:11px 10px;
+          border-bottom:1px solid #eee;
+          color:#777;
+          width:40%;
+        ">
+          ${escaparHtml_(campo)}
+        </td>
+
+        <td style="
+          padding:11px 0;
+          border-bottom:1px solid #eee;
+          font-weight:600;
+        ">
+          ${escaparHtml_(valor)}
+        </td>
+      </tr>
+    `;
+
+  };
+
+  const tabela = [
+
+    linha(
+      'WhatsApp',
+      lead.whatsapp
+    ),
+
+    linha(
+      'Instagram',
+      lead.instagram
+    ),
+
+    linha(
+      'Tipo de negócio',
+      lead.tipo
+    ),
+
+    linha(
+      'Faturamento',
+      lead.faturamento || 'Não informado'
+    ),
+
+    linha(
+      'Perfil financeiro',
+      resultado.perfil
+    ),
+
+    linha(
+      'Urgência',
+      lead.momento || 'Não informada'
+    ),
+
+    linha(
+      'Poder de decisão',
+      lead.decisor || 'Não informado'
+    ),
+
+    linha(
+      'Pontuação comercial',
+      resultado.pontos + '/100'
+    ),
+
+    linha(
+      'Dificuldades',
+      lead.dores.join(' • ')
+    ),
+
+    linha(
+      'Origem',
+      lead.origem.utm_source || 'Direto'
+    ),
+
+    linha(
+      'Campanha',
+      lead.origem.utm_campaign
+    )
+
+  ].join('');
+
+  const botao = lead.linkWhatsApp
+    ? `
+      <p style="margin-top:28px;">
+        <a
+          href="${escaparHtml_(lead.linkWhatsApp)}"
+          style="
+            display:block;
+            background:#111;
+            color:#fff;
+            text-decoration:none;
+            text-align:center;
+            padding:15px;
+            border-radius:8px;
+            font-weight:bold;
+          "
+        >
+          Chamar lead no WhatsApp →
+        </a>
+      </p>
+    `
+    : '';
+
+  const html = `
+
+    <div style="
+      background:#f4f4f4;
+      padding:28px 10px;
+      font-family:Arial,sans-serif;
+      color:#111;
+    ">
+
+      <div style="
+        max-width:650px;
+        margin:auto;
+        background:#fff;
+        border:1px solid #e5e5e5;
+        border-radius:12px;
+        overflow:hidden;
+      ">
+
+        <div style="
+          background:#000;
+          color:#fff;
+          padding:26px 28px;
+        ">
+
+          <div style="
+            font-size:12px;
+            letter-spacing:2px;
+            opacity:.7;
+          ">
+            CAIROPET
+          </div>
+
+          <div style="
+            font-size:25px;
+            font-weight:700;
+            margin-top:10px;
+          ">
+            ${escaparHtml_(rotulo)}
+          </div>
+
+          <div style="
+            font-size:12px;
+            opacity:.7;
+            margin-top:8px;
+          ">
+            ${escaparHtml_(lead.recebidoEm)}
+          </div>
+
+        </div>
+
+        <div style="padding:26px 28px;">
+
+          <div style="
+            font-size:24px;
+            font-weight:700;
+          ">
+            ${escaparHtml_(lead.nome)}
+          </div>
+
+          <div style="
+            color:#666;
+            margin:6px 0 18px;
+          ">
+
+            ${escaparHtml_(lead.agropecuaria)}
+
+            ·
+
+            ${escaparHtml_(lead.cidade)}
+
+            ${lead.uf
+              ? '/' + escaparHtml_(lead.uf)
+              : ''}
+
+          </div>
+
+          <div style="
+            padding:12px 14px;
+            background:#f5f5f5;
+            border-radius:7px;
+            margin-bottom:22px;
+          ">
+
+            <strong>
+              ${escaparHtml_(resultado.classe)}
+            </strong>
+
+            <br>
+
+            <span style="
+              color:#555;
+              font-size:13px;
+              line-height:1.6;
+            ">
+              ${escaparHtml_(resultado.motivo)}
+            </span>
+
+          </div>
+
+          <table
+            width="100%"
+            cellpadding="0"
+            cellspacing="0"
+            style="
+              border-collapse:collapse;
+              font-size:14px;
+            "
+          >
+
+            ${tabela}
+
+          </table>
+
+          ${botao}
+
+        </div>
+
+      </div>
+
+    </div>
+  `;
+
+  const textoSimples =
+    rotulo +
+    '\n' +
+    lead.nome +
+    ' — ' +
+    lead.agropecuaria +
+    '\nFaturamento: ' +
+    (lead.faturamento || 'Não informado') +
+    '\nMomento: ' +
+    (lead.momento || 'Não informado') +
+    '\nPontuação: ' +
+    resultado.pontos +
+    '/100' +
+    '\nWhatsApp: ' +
+    lead.whatsapp;
+
+  MailApp.sendEmail({
+
+    to: emails,
+
+    subject: assunto,
+
+    body: textoSimples,
+
+    htmlBody: html,
+
+    name: CAIRO_CONFIG.NOME_REMETENTE
+
+  });
+
+}
+
+/**
+ * PROTEÇÃO DO HTML
+ */
+
+function escaparHtml_(valor) {
+
+  return texto_(valor)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+
+}
+
+/**
+ * RESPOSTA JSON
+ */
+
+function respostaJson_(obj) {
+
+  return ContentService
+    .createTextOutput(
+      JSON.stringify(obj)
+    )
+    .setMimeType(
+      ContentService.MimeType.JSON
+    );
+
+}
+
+/**
+ * TESTE DAS NOTIFICAÇÕES
+ */
+
+function testarEmail() {
+
+  const emails = PropertiesService
+    .getScriptProperties()
+    .getProperty('NOTIFICATION_EMAILS');
+
+  if (!emails) {
+
+    throw new Error(
+      'Configure NOTIFICATION_EMAILS.'
+    );
+
+  }
+
+  MailApp.sendEmail({
+
+    to: emails,
+
+    subject:
+      '✅ CairoPet — teste de notificação',
+
+    body:
+      'As notificações do Apps Script estão funcionando.',
+
+    htmlBody: `
+      <div style="
+        font-family:Arial;
+        padding:25px;
+      ">
+
+        <h2>✅ CairoPet</h2>
+
+        <p>
+          As notificações estão funcionando.
+        </p>
+
+      </div>
+    `,
+
+    name: CAIRO_CONFIG.NOME_REMETENTE
+
+  });
+
+  console.log(
+    'E-mail de teste enviado.'
+  );
+
+}
+
+/**
+ * TESTE DE CLASSIFICAÇÃO
+ */
+
 function testarClassificacao() {
-  const base = (loja, q) => ({ loja: Object.assign({ tipo_estabelecimento: 'Agropecuária' }, loja), qualificacao: q });
-  const casos = [
-    [CLASSIFICACAO.abaixo, base({ faturamento: 'Até R$ 50 mil' }, { poder_decisao: DECISORES[0], urgencia: URGENTES[0] })],
-    [CLASSIFICACAO.avaliacao, base({ faturamento: 'Prefiro não informar' }, { poder_decisao: DECISORES[0], urgencia: URGENTES[0] })],
-    [CLASSIFICACAO.avaliacao, base({ faturamento: 'R$ 300 mil ou mais', tipo_estabelecimento: 'Outro' }, { poder_decisao: DECISORES[0], urgencia: URGENTES[0] })],
-    [CLASSIFICACAO.quente, base({ faturamento: 'De R$ 50 mil a R$ 79.999' }, { poder_decisao: DECISORES[1], urgencia: URGENTES[1] })],
-    [CLASSIFICACAO.morno, base({ faturamento: 'De R$ 150 mil a R$ 299.999' }, { poder_decisao: 'Decido junto com outra pessoa', urgencia: URGENTES[0] })],
-  ];
-  casos.forEach(([esperado, lead]) => console.log((classificar(lead) === esperado ? 'OK   ' : 'ERRO ') + esperado + ' ← ' + JSON.stringify(lead)));
-}
 
-function json(obj) {
-  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+  const exemplos = [
+
+    {
+      faturamento: 'Menos de R$ 50 mil',
+      momento: 'Quero começar o quanto antes',
+      decisor: 'Sim, sou o proprietário',
+      tipo: 'Agropecuária'
+    },
+
+    {
+      faturamento: 'De R$ 50 mil a R$ 79.999',
+      momento: 'Quero começar o quanto antes',
+      decisor: 'Sim, sou o proprietário',
+      tipo: 'Agropecuária'
+    },
+
+    {
+      faturamento: 'De R$ 80 mil a R$ 149.999',
+      momento: 'Nos próximos 2 ou 3 meses',
+      decisor: 'Decido junto com outra pessoa',
+      tipo: 'Casa de ração'
+    },
+
+    {
+      faturamento: 'Prefiro não informar',
+      momento: 'Quero começar o quanto antes',
+      decisor: 'Sim, sou o proprietário',
+      tipo: 'Agropecuária'
+    }
+
+  ];
+
+  exemplos.forEach(lead => {
+
+    console.log(
+      JSON.stringify({
+        faturamento: lead.faturamento,
+        resultado: classificarLead_(lead)
+      })
+    );
+
+  });
+
 }

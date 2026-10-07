@@ -80,14 +80,15 @@ UTMs (`utm_source`, `utm_medium`, `utm_campaign`, `utm_content`, `utm_term`), `f
 }
 ```
 
-### Planilha e classificação (Apps Script — `integrations/google-sheets/Code.gs`)
+### Planilha e classificação (Apps Script — `integrations/google-sheets/Code.gs`, "Sistema de leads V3")
 
-- Grava **pelo nome do cabeçalho** (não por posição). Colunas que faltam são criadas só no final; nenhuma coluna existente é apagada, renomeada ou reordenada, e linhas antigas não são reescritas.
-- Colunas do formulário anterior que não são mais perguntadas (Tamanho, Marketing atual, Investimento em anúncios, Tipo de negócio, Dores, Objetivo, Momento, Decisor, **Faixa de investimento**, Contexto) ficam vazias nos leads novos.
-- Colunas novas no fim: Tipo de estabelecimento · Dificuldades (separadas por vírgula) · Urgência · Poder de decisão · **Classificação**.
-- O formulário não oferece faixa abaixo de R$ 50 mil (a menor é "De R$ 50 mil a R$ 79.999", mais "Prefiro não informar").
-- **Classificação** é calculada só no Apps Script (nunca no navegador), nesta ordem: faturamento abaixo de `FATURAMENTO_MINIMO` (hoje 50000; só acontece se o mínimo subir) → `ABAIXO DO PERFIL FINANCEIRO`; "Prefiro não informar" ou tipo "Outro" → `EM AVALIAÇÃO`; dono/responsável + "o quanto antes"/"30 dias" → `QUENTE`; resto → `MORNO`. Para mudar o corte, altere só a constante (vale 50000, 80000, 150000 ou 300000) e publique nova versão — o site não muda.
-- Aviso por e-mail a cada lead novo (propriedade `NOTIFY_EMAIL`, ou o dono do script), com a classificação no assunto. No editor: `testarEmail()` e `testarClassificacao()`.
+- Grava na aba **"Novos contatos"** (a aba antiga "Leads" fica como histórico), **pelo nome do cabeçalho**; cabeçalhos que faltarem são criados no fim.
+- Colunas: Recebido em · Agropecuária · Cidade · UF · Tipo de negócio · Faturamento · Dores · Momento · Decisor · Nome · WhatsApp · Link WhatsApp · Instagram · Perfil financeiro · **Classificação** · **Pontuação** · **Motivo da classificação** · LGPD aceita · UTMs · fbclid · gclid · Página de entrada · Origem (referrer) · ID do envio.
+- **Classificação** só no Apps Script (nunca no navegador), com `CAIRO_CONFIG.FATURAMENTO_MINIMO` (50000): abaixo do mínimo → `ABAIXO DO PERFIL FINANCEIRO`; faturamento não informado ou tipo fora de agropecuária/casa de ração → `EM AVALIAÇÃO`; decisor direto + começar em até 30 dias → `QUENTE`; resto → `MORNO`. Pontuação comercial de 0 a 100.
+- Tipo de estabelecimento é lido de `loja.tipo_estabelecimento` (o `tipo` da raiz do payload é `lead_site_cairopet`, não o tipo da loja).
+- Aviso por e-mail em HTML para `NOTIFICATION_EMAILS`. **Fila de avisos (recomendada):** rodar `instalarAvisos` uma vez → o lead é salvo e confirmado sem esperar o e-mail, que sai em até 1 minuto (gatilho `processarAvisos`). `desinstalarAvisos` volta ao e-mail imediato.
+- O site chama `GET /api/lead?aquecer=1` ao chegar na etapa 3, que aciona o `doGet` (não grava nada) para acordar o script antes do envio.
+- No editor: `testarEmail()` e `testarClassificacao()`.
 
 Se o webhook pedir autenticação, defina `LEAD_WEBHOOK_TOKEN` (enviado como `Authorization: Bearer …`).
 
