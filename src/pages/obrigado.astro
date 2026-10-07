@@ -12,18 +12,45 @@ import Logo from '../components/brand/Logo.astro';
     </header>
 
     <div class="ok__body">
-      <h1 class="ok__title">Recebemos suas informações!</h1>
-      <p class="ok__text">Escolha um horário para o seu briefing com nossa equipe.</p>
+      <div class="ok__badge">
+        <svg class="ok__check" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <circle cx="8" cy="8" r="8" fill="#111"/>
+          <path d="M4.5 8.25L6.75 10.5L11.5 5.5" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>Cadastro recebido com sucesso</span>
+      </div>
 
-      <a
-        class="ok__btn"
-        href=""
-        id="btn-calendly"
-        data-track="calendly_open"
-        data-location="obrigado"
-      >
-        <span>Agendar meu briefing</span>
-      </a>
+      <h1 class="ok__title">Agora agende seu briefing gratuito</h1>
+      <p class="ok__text">Em 30 minutos, nossa equipe analisa o perfil da sua agropecuária e mostra exatamente o que pode mudar no seu marketing.</p>
+
+      <div class="ok__card">
+        <div class="ok__card-items">
+          <div class="ok__item">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><rect x="2" y="3" width="14" height="13" rx="2" stroke="#111" stroke-width="1.5"/><path d="M2 7h14" stroke="#111" stroke-width="1.5"/><path d="M6 1v2M12 1v2" stroke="#111" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <span>Você escolhe o dia e horário</span>
+          </div>
+          <div class="ok__item">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><circle cx="9" cy="9" r="7" stroke="#111" stroke-width="1.5"/><path d="M9 5.5V9l2.5 2" stroke="#111" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <span>30 minutos, sem enrolação</span>
+          </div>
+          <div class="ok__item">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M9 2L11.12 6.74L16 7.27L12.5 10.64L13.44 15.5L9 13.11L4.56 15.5L5.5 10.64L2 7.27L6.88 6.74L9 2Z" stroke="#111" stroke-width="1.5" stroke-linejoin="round"/></svg>
+            <span>Diagnóstico gratuito, sem compromisso</span>
+          </div>
+        </div>
+
+        <a
+          class="ok__btn"
+          href=""
+          id="btn-calendly"
+          data-track="calendly_open"
+          data-location="obrigado"
+        >
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="14" rx="2" stroke="#fff" stroke-width="1.5"/><path d="M2.5 8h15" stroke="#fff" stroke-width="1.5"/><path d="M7 1.5v2M13 1.5v2" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <span>Escolher meu horário agora</span>
+        </a>
+        <p class="ok__disclaimer">Gratuito · Sem compromisso · Atendemos 1 empresa por cidade</p>
+      </div>
     </div>
   </main>
 
@@ -57,9 +84,9 @@ import Logo from '../components/brand/Logo.astro';
     flex-direction: column;
     min-height: 100vh;
     min-height: 100dvh;
-    max-width: 34rem;
+    max-width: 36rem;
     margin-inline: auto;
-    padding: env(safe-area-inset-top) var(--side) calc(1.5rem + env(safe-area-inset-bottom));
+    padding: env(safe-area-inset-top) var(--side) calc(2rem + env(safe-area-inset-bottom));
   }
 
   .ok__top {
@@ -76,24 +103,64 @@ import Logo from '../components/brand/Logo.astro';
 
   .ok__body {
     display: grid;
-    gap: 1rem;
-    padding-top: clamp(1.5rem, 8vh, 4rem);
+    gap: 1.25rem;
+    padding-top: clamp(1.75rem, 6vh, 3rem);
   }
 
+  .ok__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--ink-2);
+    letter-spacing: 0.01em;
+  }
 
   .ok__title {
     font-family: var(--font-display), sans-serif;
-    font-size: clamp(1.75rem, 1.2rem + 2.6vw, 2.5rem);
+    font-size: clamp(1.875rem, 1.3rem + 2.6vw, 2.75rem);
     font-weight: 400;
-    line-height: 1.1;
-    letter-spacing: -0.02em;
+    line-height: 1.08;
+    letter-spacing: -0.025em;
     text-wrap: balance;
+    margin-top: 0.25rem;
   }
 
   .ok__text {
     color: var(--ink-2);
     font-size: 1.0625rem;
-    line-height: 1.5;
+    line-height: 1.55;
+    text-wrap: pretty;
+    max-width: 30rem;
+  }
+
+  .ok__card {
+    display: grid;
+    gap: 1rem;
+    margin-top: 0.5rem;
+    padding: 1.5rem;
+    border: 1.5px solid var(--rule);
+    border-radius: 16px;
+    background: var(--mist);
+  }
+
+  .ok__card-items {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .ok__item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: var(--ink);
+  }
+
+  .ok__item svg {
+    flex: none;
   }
 
   .ok__btn {
@@ -102,23 +169,24 @@ import Logo from '../components/brand/Logo.astro';
     justify-content: center;
     gap: 0.625rem;
     min-height: 60px;
-    margin-top: 0.75rem;
+    margin-top: 0.25rem;
     padding: 0 1.25rem;
     border-radius: 12px;
     background: var(--ink);
-    color: var(--bg);
-    font-size: 1rem;
+    color: #fff;
+    font-size: 1.0625rem;
     font-weight: 700;
     line-height: 1.25;
     text-align: center;
     text-decoration: none;
     cursor: pointer;
     touch-action: manipulation;
+    transition: opacity 0.15s;
   }
 
   .ok__btn:hover,
   .ok__btn:active {
-    opacity: 0.85;
+    opacity: 0.82;
   }
 
   .ok__btn span {
@@ -126,10 +194,20 @@ import Logo from '../components/brand/Logo.astro';
     text-wrap: balance;
   }
 
+  .ok__disclaimer {
+    font-size: 0.8125rem;
+    color: var(--ink-3);
+    text-align: center;
+    line-height: 1.4;
+  }
+
   @media (max-width: 23.74rem) {
     .ok__btn {
       padding-inline: 0.875rem;
-      font-size: 0.9375rem;
+      font-size: 1rem;
+    }
+    .ok__card {
+      padding: 1.125rem;
     }
   }
 
@@ -138,6 +216,5 @@ import Logo from '../components/brand/Logo.astro';
       font-size: 1.125rem;
     }
   }
-
 
 </style>
