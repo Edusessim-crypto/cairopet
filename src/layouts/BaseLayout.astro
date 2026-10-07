@@ -72,6 +72,33 @@ const ogImage = new URL(SITE.ogImage, Astro.site).href;
     <Font cssVariable="--font-mono" />
 
     {jsonLd.map((data) => <script is:inline type="application/ld+json" set:html={JSON.stringify(data)} />)}
+
+    <!-- Captura UTMs/fbclid/gclid o mais cedo possível, antes de qualquer recurso
+         externo carregar. Necessário porque o navegador interno do Instagram (IAB)
+         pode ser fechado antes do bundle JS do body executar, perdendo os parâmetros. -->
+    <script is:inline>
+      (function () {
+        var KEY = 'cp_attr';
+        var TTL = 30 * 24 * 60 * 60 * 1000;
+        var PARAMS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'fbclid', 'gclid'];
+        try {
+          var params = new URLSearchParams(location.search);
+          var fromUrl = {};
+          for (var i = 0; i < PARAMS.length; i++) {
+            var v = params.get(PARAMS[i]);
+            if (v) fromUrl[PARAMS[i]] = v.slice(0, 300);
+          }
+          if (Object.keys(fromUrl).length === 0) return;
+          var ext = document.referrer && !document.referrer.startsWith(location.origin) ? document.referrer : undefined;
+          var data = Object.assign({}, fromUrl, {
+            landing_page: location.pathname + location.search,
+            referrer: ext,
+            fbc: fromUrl.fbclid ? 'fb.1.' + Date.now() + '.' + fromUrl.fbclid : undefined
+          });
+          localStorage.setItem(KEY, JSON.stringify({ ts: Date.now(), data: data }));
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body class={bodyClass}>
     {
@@ -83,10 +110,8 @@ const ogImage = new URL(SITE.ogImage, Astro.site).href;
     }
     <slot />
     <script>
-      import { captureAttribution } from '../scripts/attribution';
       import { bindClickTracking, initTracking } from '../scripts/tracking';
 
-      captureAttribution();
       initTracking();
       bindClickTracking();
     </script>
