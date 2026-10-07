@@ -172,16 +172,19 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
 export const GET: APIRoute = async ({ url }) => {
   if (url.searchParams.get('aquecer') !== '1') return json(405, { ok: false, message: 'Método não permitido.' });
   const started = Date.now();
+  let result = 'sem-webhook';
   if (LEAD_WEBHOOK_URL && new URL(LEAD_WEBHOOK_URL).hostname === 'script.google.com') {
     try {
-      await fetch(LEAD_WEBHOOK_URL, { redirect: 'follow', signal: AbortSignal.timeout(8000) });
-    } catch {
-      /* aquecimento é só otimização */
+      const res = await fetch(LEAD_WEBHOOK_URL, { redirect: 'follow', signal: AbortSignal.timeout(20000) });
+      const body = await res.text();
+      result = `${res.status}${body.includes('"ok":true') ? '-ok' : '-' + res.headers.get('content-type')?.split(';')[0]}`;
+    } catch (err) {
+      result = (err as Error)?.name ?? 'erro';
     }
   }
   return new Response(null, {
     status: 204,
-    headers: { 'Cache-Control': 'no-store', 'Server-Timing': `planilha;dur=${Date.now() - started}` },
+    headers: { 'Cache-Control': 'no-store', 'Server-Timing': `planilha;dur=${Date.now() - started};desc="${result}"` },
   });
 };
 
