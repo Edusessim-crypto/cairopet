@@ -2,12 +2,14 @@
  * Schema do lead — usado pelo formulário (navegador) e pela rota /api/lead
  * (servidor). Qualquer mudança de campo ou opção deve ser feita aqui.
  *
- * Ordem oficial do formulário (não alterar sem pedido da CairoPet):
- *  1 Nome · 2 WhatsApp · 3 Instagram · 4 Cidade + Estado · 5 Nome da agropecuária
- *  6 Tipo de negócio · 7 Tamanho da operação · 8 Faturamento · 9 Marketing atual
- *  10 Investimento em anúncios · 11 Dores · 12 Objetivo · 13 Momento de contratação
- *  14 Decisor · 15 Faixa de investimento · 16 LGPD (com o envio)
- *  (Contexto adicional e tela de revisão removidos a pedido da CairoPet.)
+ * Formulário em 3 etapas (pedido da CairoPet, out/2026):
+ *  1 Sua agropecuária — nome da loja · cidade + UF · tipo de estabelecimento
+ *  2 Seu negócio      — faturamento · o que impede de vender mais (até 2) · quando
+ *                       quer começar · poder de decisão
+ *  3 Seus dados       — nome · WhatsApp · Instagram (opcional)
+ * A pergunta sobre quanto investir na agência foi removida de propósito: a
+ * qualificação financeira é feita pelo faturamento, e a classificação do lead
+ * acontece só no Apps Script (nada disso fica exposto no navegador).
  */
 
 export const UFS = [
@@ -40,93 +42,52 @@ export const UFS = [
   ['TO', 'Tocantins'],
 ] as const;
 
-export const TIPO_NEGOCIO_OPTIONS = [
+export const TIPO_ESTABELECIMENTO_OPTIONS = [
   'Agropecuária',
-  'Agropecuária com pet shop',
-  'Pet shop com linha agro',
   'Casa de ração',
-  'Loja de produtos veterinários',
+  'Agropecuária e pet shop',
+  'Agropecuária e materiais de construção',
   'Outro',
 ] as const;
 
-export const TAMANHO_OPTIONS = [
-  'Loja pequena / local',
-  'Loja estruturada, com equipe',
-  'Loja de médio porte',
-  'Loja de grande porte',
-  'Mais de uma unidade',
-] as const;
-
-/** [AJUSTAR] faixas de faturamento mensal conforme o processo comercial da CairoPet. */
+/**
+ * Faixas de faturamento mensal. Só os rótulos vivem aqui: o valor de referência de
+ * cada faixa e o faturamento mínimo ficam no Apps Script (FATURAMENTO_MINIMO), que
+ * classifica o lead no servidor. Mudou um rótulo? Atualize também FAIXAS_FATURAMENTO
+ * em integrations/google-sheets/Code.gs.
+ */
 export const FATURAMENTO_OPTIONS = [
-  'Até R$ 50 mil',
-  'De R$ 50 mil a R$ 150 mil',
-  'De R$ 150 mil a R$ 500 mil',
-  'De R$ 500 mil a R$ 1 milhão',
-  'Acima de R$ 1 milhão',
+  'De R$ 50 mil a R$ 79.999',
+  'De R$ 80 mil a R$ 149.999',
+  'De R$ 150 mil a R$ 299.999',
+  'R$ 300 mil ou mais',
   'Prefiro não informar',
 ] as const;
 
-export const MARKETING_OPTIONS = [
-  'Eu mesmo',
-  'Alguém da loja',
-  'Freelancer',
-  'Agência',
-  'Ninguém cuida hoje',
-  'Outro',
+export const DIFICULDADES_OPTIONS = [
+  'Poucos clientes entrando na loja',
+  'Promoções que não trazem resultados',
+  'Dificuldade para conquistar novos clientes',
+  'Estoque parado',
+  'Poucas vendas pelo WhatsApp',
+  'Falta de divulgação e presença digital',
+  'Quero crescer, mas não sei por onde começar',
 ] as const;
 
-/** [AJUSTAR] faixas de investimento mensal atual em anúncios. */
-export const INVESTIMENTO_ANUNCIOS_OPTIONS = [
-  'Não invisto em anúncios',
-  'Até R$ 500 por mês',
-  'De R$ 500 a R$ 1.500 por mês',
-  'De R$ 1.500 a R$ 5.000 por mês',
-  'Mais de R$ 5.000 por mês',
-  'Não sei informar',
-] as const;
+export const MAX_DIFICULDADES = 2;
 
-export const DORES_OPTIONS = [
-  'Pouco movimento',
-  'Poucos clientes novos',
-  'Instagram parado',
-  'Marketing sem resultado',
-  'Produtos encalhados',
-  'Promoções com pouca repercussão',
-  'Concorrência aparecendo mais',
-  'Poucas mensagens e pedidos de orçamento',
-  'Quero crescer, mas não sei como estruturar o marketing',
-] as const;
-
-export const OBJETIVO_OPTIONS = [
-  'Aumentar o movimento na loja',
-  'Trazer clientes novos',
-  'Fazer as promoções chegarem em mais gente',
-  'Girar produto parado no estoque',
-  'Receber mais mensagens e pedidos',
-  'Organizar o marketing da loja',
-] as const;
-
-export const MOMENTO_OPTIONS = [
+export const URGENCIA_OPTIONS = [
   'Quero começar o quanto antes',
+  'Nos próximos 30 dias',
   'Nos próximos 2 ou 3 meses',
-  'Estou pesquisando opções',
-  'Por enquanto, só quero saber se minha cidade está livre',
+  'Ainda estou pesquisando as possibilidades',
 ] as const;
 
-export const DECISOR_OPTIONS = [
-  'Sou eu quem decide',
-  'Decido junto com sócio ou família',
-  'Outra pessoa decide',
-] as const;
-
-/** [AJUSTAR] faixas de investimento total (serviço + anúncios) conforme o comercial. */
-export const FAIXA_INVESTIMENTO_OPTIONS = [
-  'Até R$ 2.000 por mês',
-  'De R$ 2.000 a R$ 4.000 por mês',
-  'De R$ 4.000 a R$ 8.000 por mês',
-  'Acima de R$ 8.000 por mês',
-  'Ainda não sei, quero entender primeiro',
+export const PODER_DECISAO_OPTIONS = [
+  'Sim, sou o proprietário',
+  'Sim, sou responsável pelas contratações',
+  'Decido junto com outra pessoa',
+  'Não, mas participo da decisão',
 ] as const;
 
 export const TRACKING_KEYS = [
@@ -148,23 +109,17 @@ export const TRACKING_KEYS = [
 export type TrackingKey = (typeof TRACKING_KEYS)[number];
 
 export interface Lead {
+  loja: string;
+  cidade: string;
+  uf: string;
+  tipo_estabelecimento: string;
+  faturamento: string;
+  dificuldades: string[];
+  urgencia: string;
+  poder_decisao: string;
   nome: string;
   whatsapp: string;
   instagram: string;
-  cidade: string;
-  uf: string;
-  loja: string;
-  tipo_negocio: string;
-  tamanho: string;
-  faturamento: string;
-  marketing_atual: string;
-  investimento_anuncios: string;
-  dores: string[];
-  objetivo: string;
-  momento: string;
-  decisor: string;
-  faixa_investimento: string;
-  contexto: string;
   consentimento: boolean;
   tracking: Partial<Record<TrackingKey, string>>;
 }
@@ -200,14 +155,38 @@ export function formatWhatsapp(v: string): string {
   return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
 }
 
-/** "@loja", "instagram.com/loja/" ou "loja" → "@loja". Sites ficam como estão. */
+/** "@loja", "instagram.com/loja/" ou "loja" → "@loja". O que não for perfil fica como está (e não passa na validação). */
 export function normalizeInstagram(v: string): string {
   const t = v.trim();
   if (!t) return '';
-  const m = t.match(/instagram\.com\/([A-Za-z0-9._]+)/i);
+  const m = t.match(/^(?:https?:\/\/)?(?:www\.|m\.)?(?:instagram\.com|instagr\.am)\/([A-Za-z0-9._]{1,30})\/?(?:[?#].*)?$/i);
   if (m) return `@${m[1]}`;
-  if (/^@?[A-Za-z0-9._]{1,30}$/.test(t)) return `@${t.replace(/^@/, '')}`;
+  // Endereço de site (www.loja.com.br) não é perfil — a não ser que venha com @.
+  const looksLikeSite = /^(https?:\/\/|www\.)|\.(com|net|org|br|site|online|shop|store)(\.br)?\/?$/i.test(t);
+  if (/^@?[A-Za-z0-9._]{1,30}$/.test(t) && (t.startsWith('@') || !looksLikeSite)) return `@${t.replace(/^@/, '')}`;
   return t;
+}
+
+const isInstagramHandle = (v: string) => /^@[A-Za-z0-9._]{1,30}$/.test(v);
+
+/** DDDs em uso no Brasil (Anatel). */
+const DDDS = new Set(
+  '11 12 13 14 15 16 17 18 19 21 22 24 27 28 31 32 33 34 35 37 38 41 42 43 44 45 46 47 48 49 51 53 54 55 61 62 63 64 65 66 67 68 69 71 73 74 75 77 79 81 82 83 84 85 86 87 88 89 91 92 93 94 95 96 97 98 99'.split(
+    ' ',
+  ),
+);
+
+/**
+ * WhatsApp brasileiro: DDD válido + celular (11 dígitos, começa com 9) ou fixo
+ * (10 dígitos, começa de 2 a 5 — WhatsApp Business aceita fixo). Recusa número
+ * com todos os dígitos iguais.
+ */
+export function isValidWhatsapp(v: string): boolean {
+  const d = normalizeWhatsapp(v);
+  if (!DDDS.has(d.slice(0, 2))) return false;
+  const n = d.slice(2);
+  if (/^(\d)\1+$/.test(n)) return false;
+  return (n.length === 9 && n[0] === '9') || (n.length === 8 && /[2-5]/.test(n[0]));
 }
 
 export const firstName = (nome: string) => nome.trim().split(/\s+/)[0] ?? '';
@@ -218,27 +197,22 @@ const choose = (options: readonly string[], message: string) => (value: string) 
 
 /** Validação por campo — mensagens escritas para o dono da loja, não para dev. */
 export const validators: Partial<Record<keyof Lead, (lead: Lead) => string | null>> = {
-  nome: (l) => (l.nome.length >= 2 ? null : 'Escreva seu nome para a gente saber com quem vai falar.'),
-  whatsapp: (l) => {
-    const d = normalizeWhatsapp(l.whatsapp);
-    return d.length === 10 || d.length === 11 ? null : 'Informe o WhatsApp com DDD. Ex.: (34) 99999-9999';
-  },
-  cidade: (l) => (l.cidade.length >= 2 ? null : 'Informe a cidade da sua agropecuária.'),
+  loja: (l) => (l.loja.length >= 2 ? null : 'Informe o nome da sua agropecuária.'),
   uf: (l) => (oneOf(l.uf, UFS.map(([uf]) => uf)) ? null : 'Escolha o estado.'),
-  loja: (l) => (l.loja.length >= 2 ? null : 'Informe o nome da agropecuária.'),
-  tipo_negocio: (l) => choose(TIPO_NEGOCIO_OPTIONS, 'Escolha o tipo de negócio.')(l.tipo_negocio),
-  tamanho: (l) => choose(TAMANHO_OPTIONS, 'Escolha a opção mais próxima da sua operação.')(l.tamanho),
+  cidade: (l) => (l.cidade.length >= 2 ? null : 'Informe a cidade.'),
+  tipo_estabelecimento: (l) => choose(TIPO_ESTABELECIMENTO_OPTIONS, 'Escolha o tipo do estabelecimento.')(l.tipo_estabelecimento),
   faturamento: (l) => choose(FATURAMENTO_OPTIONS, 'Escolha uma faixa — ou "Prefiro não informar".')(l.faturamento),
-  marketing_atual: (l) => choose(MARKETING_OPTIONS, 'Escolha quem cuida do marketing hoje.')(l.marketing_atual),
-  investimento_anuncios: (l) =>
-    choose(INVESTIMENTO_ANUNCIOS_OPTIONS, 'Escolha a opção mais próxima.')(l.investimento_anuncios),
-  dores: (l) =>
-    l.dores.length > 0 && l.dores.every((d) => oneOf(d, DORES_OPTIONS)) ? null : 'Marque pelo menos uma opção.',
-  objetivo: (l) => choose(OBJETIVO_OPTIONS, 'Escolha o que você mais quer melhorar.')(l.objetivo),
-  momento: (l) => choose(MOMENTO_OPTIONS, 'Escolha a opção que mais combina com o seu momento.')(l.momento),
-  decisor: (l) => choose(DECISOR_OPTIONS, 'Escolha quem decide a contratação.')(l.decisor),
-  faixa_investimento: (l) =>
-    choose(FAIXA_INVESTIMENTO_OPTIONS, 'Escolha uma faixa — pode ser "Ainda não sei".')(l.faixa_investimento),
+  dificuldades: (l) => {
+    if (l.dificuldades.length === 0) return 'Marque pelo menos uma opção.';
+    if (l.dificuldades.length > MAX_DIFICULDADES) return `Marque no máximo ${MAX_DIFICULDADES} opções.`;
+    return l.dificuldades.every((d) => oneOf(d, DIFICULDADES_OPTIONS)) ? null : 'Marque pelo menos uma opção.';
+  },
+  urgencia: (l) => choose(URGENCIA_OPTIONS, 'Escolha quando você pretende começar.')(l.urgencia),
+  poder_decisao: (l) => choose(PODER_DECISAO_OPTIONS, 'Escolha a opção que mais combina com você.')(l.poder_decisao),
+  nome: (l) => (l.nome.length >= 2 ? null : 'Escreva seu nome para a gente saber com quem vai falar.'),
+  whatsapp: (l) => (isValidWhatsapp(l.whatsapp) ? null : 'Confira o WhatsApp com DDD. Ex.: (34) 99999-1234'),
+  instagram: (l) =>
+    !l.instagram || isInstagramHandle(l.instagram) ? null : 'Informe o @ do Instagram ou o link do perfil — ou deixe em branco.',
   consentimento: (l) => (l.consentimento ? null : 'Para enviar, é preciso concordar com a Política de Privacidade.'),
 };
 
@@ -251,23 +225,17 @@ export function parseLead(raw: Raw): Lead {
   }
   const consent = raw.consentimento;
   return {
+    loja: str(raw.loja, 120),
+    cidade: str(raw.cidade, 80),
+    uf: str(raw.uf, 2).toUpperCase(),
+    tipo_estabelecimento: str(raw.tipo_estabelecimento),
+    faturamento: str(raw.faturamento),
+    dificuldades: [...new Set(list(raw.dificuldades))],
+    urgencia: str(raw.urgencia),
+    poder_decisao: str(raw.poder_decisao),
     nome: str(raw.nome, 80),
     whatsapp: str(raw.whatsapp, 30),
     instagram: normalizeInstagram(str(raw.instagram, 200)),
-    cidade: str(raw.cidade, 80),
-    uf: str(raw.uf, 2).toUpperCase(),
-    loja: str(raw.loja, 120),
-    tipo_negocio: str(raw.tipo_negocio),
-    tamanho: str(raw.tamanho),
-    faturamento: str(raw.faturamento),
-    marketing_atual: str(raw.marketing_atual),
-    investimento_anuncios: str(raw.investimento_anuncios),
-    dores: list(raw.dores),
-    objetivo: str(raw.objetivo),
-    momento: str(raw.momento),
-    decisor: str(raw.decisor),
-    faixa_investimento: str(raw.faixa_investimento),
-    contexto: str(raw.contexto, 1000),
     consentimento: consent === true || consent === 'true' || consent === 'on' || consent === 'sim',
     tracking,
   };

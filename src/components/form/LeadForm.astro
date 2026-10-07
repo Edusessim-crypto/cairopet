@@ -1,78 +1,99 @@
 ---
 /**
- * Formulário CairoPet — produto mobile. Uma pergunta por tela, na ordem oficial.
+ * Formulário CairoPet — uma pergunta por tela, agrupadas em 3 etapas.
+ *
+ *   Etapa 1 Sua agropecuária: nome da loja · cidade + UF · tipo de estabelecimento
+ *   Etapa 2 Seu negócio:      faturamento · o que impede de vender mais · quando começar · decisão
+ *   Etapa 3 Seus dados:       nome · WhatsApp · Instagram (opcional)
  *
  * Estrutura de cada tela (celular primeiro):
- *   barra superior (voltar 44px · logo · fechar) + progresso fino "5 de 16"
- *   grupo da etapa · pergunta · explicação curta · resposta
+ *   barra superior (voltar 44px · logo · fechar) + "Etapa 1 de 3" com 3 barras
+ *   (cada barra enche conforme as perguntas da etapa) · pergunta · resposta
  *   botão principal de largura total, no alcance do polegar
  *
- * Sem JS: todas as etapas aparecem em sequência e o envio é um POST comum.
- * Com JS (src/scripts/lead-form.ts): etapas, histórico do navegador, rascunho
+ * Sem JS: todas as perguntas aparecem em sequência e o envio é um POST comum.
+ * Com JS (src/scripts/lead-form.ts): telas, histórico do navegador, rascunho
  * salvo no aparelho, teclado mobile cuidado, envio via fetch → /obrigado/.
  */
 import Logo from '../brand/Logo.astro';
 import WhatsAppIcon from '../WhatsAppIcon.astro';
 import { whatsappLink } from '../../lib/site';
 import {
-  DECISOR_OPTIONS,
-  DORES_OPTIONS,
-  FAIXA_INVESTIMENTO_OPTIONS,
+  DIFICULDADES_OPTIONS,
   FATURAMENTO_OPTIONS,
-  INVESTIMENTO_ANUNCIOS_OPTIONS,
-  MARKETING_OPTIONS,
-  MOMENTO_OPTIONS,
-  OBJETIVO_OPTIONS,
-  TAMANHO_OPTIONS,
-  TIPO_NEGOCIO_OPTIONS,
+  MAX_DIFICULDADES,
+  PODER_DECISAO_OPTIONS,
+  TIPO_ESTABELECIMENTO_OPTIONS,
   UFS,
+  URGENCIA_OPTIONS,
 } from '../../lib/lead-schema';
 
 type Choice = {
   id: string;
   label: string;
-  group: string;
+  stage: number;
   kind: 'radio' | 'checkbox';
   name: string;
   q: string;
   hint?: string;
   options: readonly string[];
+  note?: string;
 };
 
-const G = { contato: 'Contato', loja: 'Sua loja', mkt: 'Marketing hoje', next: 'Próximos passos', fim: 'Finalizando' };
+const STAGES = ['Sua agropecuária', 'Seu negócio', 'Seus dados'];
 
 const choices: Choice[] = [
-  { id: 'tipo', label: 'Tipo de negócio', group: G.loja, kind: 'radio', name: 'tipo_negocio', q: 'Qual é o tipo de negócio?', options: TIPO_NEGOCIO_OPTIONS },
-  { id: 'tamanho', label: 'Tamanho', group: G.loja, kind: 'radio', name: 'tamanho', q: 'Qual é o tamanho da operação hoje?', options: TAMANHO_OPTIONS },
+  {
+    id: 'tipo',
+    label: 'Tipo de estabelecimento',
+    stage: 1,
+    kind: 'radio',
+    name: 'tipo_estabelecimento',
+    q: 'Qual é o tipo do seu estabelecimento?',
+    options: TIPO_ESTABELECIMENTO_OPTIONS,
+    note: 'Atendemos apenas uma agropecuária por cidade.',
+  },
   {
     id: 'faturamento',
     label: 'Faturamento',
-    group: G.loja,
+    stage: 2,
     kind: 'radio',
     name: 'faturamento',
-    q: 'Qual é o faturamento mensal aproximado?',
-    hint: 'Só para dimensionar a proposta. Fica entre você e a CairoPet.',
+    q: 'Qual é o faturamento médio mensal da sua agropecuária?',
+    hint: 'Uma faixa aproximada já ajuda. Fica só entre você e a CairoPet.',
     options: FATURAMENTO_OPTIONS,
   },
-  { id: 'marketing', label: 'Marketing atual', group: G.mkt, kind: 'radio', name: 'marketing_atual', q: 'Quem cuida do marketing da loja hoje?', options: MARKETING_OPTIONS },
-  { id: 'anuncios', label: 'Anúncios hoje', group: G.mkt, kind: 'radio', name: 'investimento_anuncios', q: 'Quanto a loja investe em anúncios hoje?', options: INVESTIMENTO_ANUNCIOS_OPTIONS },
-  { id: 'dores', label: 'O que incomoda', group: G.mkt, kind: 'checkbox', name: 'dores', q: 'O que mais incomoda você hoje?', hint: 'Pode marcar mais de uma.', options: DORES_OPTIONS },
-  { id: 'objetivo', label: 'Objetivo', group: G.next, kind: 'radio', name: 'objetivo', q: 'O que você mais quer melhorar nos próximos meses?', options: OBJETIVO_OPTIONS },
-  { id: 'momento', label: 'Momento', group: G.next, kind: 'radio', name: 'momento', q: 'Em que momento você está?', options: MOMENTO_OPTIONS },
-  { id: 'decisor', label: 'Decisão', group: G.next, kind: 'radio', name: 'decisor', q: 'Quem decide a contratação do marketing?', options: DECISOR_OPTIONS },
   {
-    id: 'investimento',
-    label: 'Investimento',
-    group: G.next,
+    id: 'dificuldades',
+    label: 'O que impede de vender mais',
+    stage: 2,
+    kind: 'checkbox',
+    name: 'dificuldades',
+    q: 'O que mais está impedindo sua agropecuária de vender mais hoje?',
+    hint: `Escolha até ${MAX_DIFICULDADES}.`,
+    options: DIFICULDADES_OPTIONS,
+  },
+  {
+    id: 'urgencia',
+    label: 'Quando começar',
+    stage: 2,
     kind: 'radio',
-    name: 'faixa_investimento',
-    q: 'Quanto você imagina investir por mês no marketing da loja?',
-    hint: 'Somando serviço e anúncios. É uma referência, não um compromisso.',
-    options: FAIXA_INVESTIMENTO_OPTIONS,
+    name: 'urgencia',
+    q: 'Quando você pretende começar a investir no marketing da sua agropecuária?',
+    options: URGENCIA_OPTIONS,
+  },
+  {
+    id: 'decisao',
+    label: 'Decisão',
+    stage: 2,
+    kind: 'radio',
+    name: 'poder_decisao',
+    q: 'Você é responsável pelas decisões de contratação da agropecuária?',
+    options: PODER_DECISAO_OPTIONS,
   },
 ];
 
-const TOTAL = 16;
+const group = (stage: number) => `Etapa ${stage} · ${STAGES[stage - 1]}`;
 const arrow = 'M2.5 8h10M8.5 3.5 13 8l-4.5 4.5';
 ---
 
@@ -90,8 +111,13 @@ const arrow = 'M2.5 8h10M8.5 3.5 13 8l-4.5 4.5';
       </a>
     </div>
     <div class="lf__progress" data-js-only>
-      <div class="lf__track" aria-hidden="true"><span data-bar></span></div>
-      <p class="lf__count"><span data-count-n>1</span> de {TOTAL}</p>
+      <p class="lf__count">
+        <span>Etapa <span data-count-n>1</span> de {STAGES.length}</span>
+        <span class="lf__count-label" data-count-label>{STAGES[0]}</span>
+      </p>
+      <ol class="lf__track" aria-hidden="true">
+        {STAGES.map(() => <li><span data-seg /></li>)}
+      </ol>
     </div>
   </header>
 
@@ -101,73 +127,56 @@ const arrow = 'M2.5 8h10M8.5 3.5 13 8l-4.5 4.5';
     <label for="lf-website">Deixe este campo em branco</label>
     <input id="lf-website" name="website" type="text" tabindex="-1" autocomplete="off" />
   </div>
+  <!-- Aceite pelo aviso junto ao botão de envio (Política de Privacidade). -->
+  <input type="hidden" name="consentimento" value="sim" />
 
   <div class="lf__body">
-    <!-- 01 · Nome -->
-    <section class="st" data-step="nome" data-label="Nome" data-kind="text">
-      <p class="st__group">{G.contato}</p>
-      <label class="st__q" for="f-nome">Pra começar: qual é o seu nome?</label>
-      <input class="in" id="f-nome" name="nome" type="text" inputmode="text" autocomplete="name" autocapitalize="words" maxlength="80" enterkeyhint="next" aria-describedby="e-nome" />
-      <p class="st__err" id="e-nome" data-err="nome" hidden></p>
-    </section>
-
-    <!-- 02 · WhatsApp -->
-    <section class="st" data-step="whatsapp" data-label="WhatsApp" data-kind="text">
-      <p class="st__group">{G.contato}</p>
-      <label class="st__q" for="f-whatsapp"><span data-greet hidden>Prazer, <span data-fill="nome"></span>. </span>Qual é o seu WhatsApp?</label>
-      <p class="st__hint" id="h-whatsapp">Com DDD. É por ele que a gente retorna.</p>
-      <input class="in in--big" id="f-whatsapp" name="whatsapp" type="tel" inputmode="tel" autocomplete="tel-national" placeholder="(00) 00000-0000" maxlength="20" enterkeyhint="next" aria-describedby="h-whatsapp e-whatsapp" />
-      <p class="st__err" id="e-whatsapp" data-err="whatsapp" hidden></p>
-    </section>
-
-    <!-- 03 · Instagram -->
-    <section class="st" data-step="instagram" data-label="Instagram" data-kind="text">
-      <p class="st__group">{G.loja}</p>
-      <label class="st__q" for="f-instagram">Qual é o Instagram da agropecuária?</label>
-      <p class="st__hint" id="h-instagram">Pode ser o @ ou o link do perfil.</p>
-      <input class="in" id="f-instagram" name="instagram" type="text" inputmode="text" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="@sualoja" maxlength="200" enterkeyhint="next" aria-describedby="h-instagram" />
-      <button type="button" class="st__alt" data-skip data-js-only>A loja não tem Instagram</button>
-    </section>
-
-    <!-- 04 · Cidade + Estado -->
-    <section class="st" data-step="cidade" data-label="Cidade" data-kind="text">
-      <p class="st__group">{G.loja}</p>
-      <h2 class="st__q">Em qual cidade fica a loja?</h2>
-      <p class="st__hint">É o que a gente confere primeiro: a CairoPet atende uma agropecuária por cidade.</p>
-      <div class="st__field">
-        <label class="st__label" for="f-cidade">Cidade</label>
-        <input class="in" id="f-cidade" name="cidade" type="text" inputmode="text" list="lf-cidades" autocomplete="address-level2" autocapitalize="words" maxlength="80" enterkeyhint="next" aria-describedby="e-cidade" />
-        <p class="st__err" id="e-cidade" data-err="cidade" hidden></p>
-      </div>
-      <div class="st__field">
-        <label class="st__label" for="f-uf">Estado</label>
-        <select class="in in--select" id="f-uf" name="uf" autocomplete="address-level1" aria-describedby="e-uf">
-          <option value="">Selecione o estado</option>
-          {UFS.map(([uf, name]) => <option value={uf}>{name}</option>)}
-        </select>
-        <p class="st__err" id="e-uf" data-err="uf" hidden></p>
-      </div>
-      <datalist id="lf-cidades"></datalist>
-    </section>
-
-    <!-- 05 · Nome da agropecuária -->
-    <section class="st" data-step="loja" data-label="Agropecuária" data-kind="text">
-      <p class="st__group">{G.loja}</p>
-      <label class="st__q" for="f-loja">Como se chama a sua agropecuária<span data-when="cidade" hidden> em <span data-fill="cidade"></span></span>?</label>
+    <!-- 01 · Nome da agropecuária -->
+    <section class="st" data-step="loja" data-stage="1" data-label="Nome da agropecuária" data-kind="text">
+      <p class="st__group">{group(1)}</p>
+      <label class="st__q" for="f-loja">Qual é o nome da sua agropecuária?</label>
       <input class="in" id="f-loja" name="loja" type="text" inputmode="text" autocomplete="organization" autocapitalize="words" maxlength="120" enterkeyhint="next" aria-describedby="e-loja" />
       <p class="st__err" id="e-loja" data-err="loja" hidden></p>
     </section>
 
-    <!-- 06 a 15 · Escolhas -->
+    <!-- 02 · Cidade + UF -->
+    <section class="st" data-step="cidade" data-stage="1" data-label="Cidade" data-kind="text">
+      <p class="st__group">{group(1)}</p>
+      <h2 class="st__q">Em qual cidade sua agropecuária está localizada?</h2>
+      <div class="st__row">
+        <div class="st__field">
+          <label class="st__label" for="f-uf">Estado</label>
+          <select class="in in--select" id="f-uf" name="uf" autocomplete="address-level1" aria-describedby="e-uf">
+            <option value="">UF</option>
+            {UFS.map(([uf, name]) => <option value={uf} title={name}>{uf}</option>)}
+          </select>
+        </div>
+        <div class="st__field">
+          <label class="st__label" for="f-cidade">Cidade</label>
+          <input class="in" id="f-cidade" name="cidade" type="text" inputmode="text" list="lf-cidades" autocomplete="address-level2" autocapitalize="words" maxlength="80" enterkeyhint="next" aria-describedby="e-cidade" />
+        </div>
+      </div>
+      <p class="st__err" id="e-uf" data-err="uf" hidden></p>
+      <p class="st__err" id="e-cidade" data-err="cidade" hidden></p>
+      <datalist id="lf-cidades"></datalist>
+    </section>
+
+    <!-- 03 a 07 · Escolhas -->
     {
       choices.map((c) => (
-        <section class="st" data-step={c.id} data-label={c.label} data-kind="choice" data-auto={c.kind === 'radio' ? '' : undefined}>
-          <p class="st__group">{c.group}</p>
-          <fieldset aria-describedby={`${c.hint ? `h-${c.id} ` : ''}e-${c.name}`}>
+        <section class="st" data-step={c.id} data-stage={c.stage} data-label={c.label} data-kind="choice" data-auto={c.kind === 'radio' ? '' : undefined}>
+          <p class="st__group">{group(c.stage)}</p>
+          <fieldset data-max={c.kind === 'checkbox' ? MAX_DIFICULDADES : undefined} aria-describedby={`${c.hint ? `h-${c.id} ` : ''}e-${c.name}`}>
             <legend class="st__q">{c.q}</legend>
             {c.hint && (
               <p class="st__hint" id={`h-${c.id}`}>
                 {c.hint}
+                {c.kind === 'checkbox' && (
+                  <span class="st__picked" data-js-only>
+                    {' '}
+                    <span data-picked>0</span> de {MAX_DIFICULDADES} escolhidas.
+                  </span>
+                )}
               </p>
             )}
             <div class="opts">
@@ -184,26 +193,45 @@ const arrow = 'M2.5 8h10M8.5 3.5 13 8l-4.5 4.5';
             </div>
             <p class="st__err" id={`e-${c.name}`} data-err={c.name} hidden />
           </fieldset>
+          {c.note && (
+            <p class="st__note">
+              <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="M8 1.5 13.5 4v3.6c0 3.3-2.3 5.9-5.5 6.9-3.2-1-5.5-3.6-5.5-6.9V4L8 1.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
+                <path d="m5.6 8 1.7 1.7 3.2-3.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              <span>{c.note}</span>
+            </p>
+          )}
         </section>
       ))
     }
 
-
-    <!-- 16 · LGPD -->
-    <section class="st" data-step="lgpd" data-label="Privacidade" data-kind="choice">
-      <p class="st__group">{G.fim}</p>
-      <h2 class="st__q">Seus dados, do jeito certo.</h2>
-      <p class="st__hint">Usamos as informações só para analisar a sua agropecuária e falar com você sobre ela.</p>
-      <label class="consent">
-        <input type="checkbox" name="consentimento" value="sim" aria-describedby="e-consentimento" />
-        <span class="consent__box" aria-hidden="true"></span>
-        <span class="consent__text">
-          Concordo com a <a href="/politica-de-privacidade/" target="_blank" rel="noopener">Política de Privacidade<span class="visually-hidden"> (abre em nova aba)</span></a> e com o tratamento dos meus dados conforme a LGPD.
-        </span>
-      </label>
-      <p class="st__err" id="e-consentimento" data-err="consentimento" hidden></p>
+    <!-- 08 · Nome -->
+    <section class="st" data-step="nome" data-stage="3" data-label="Seu nome" data-kind="text">
+      <p class="st__group">{group(3)}</p>
+      <label class="st__q" for="f-nome">Qual é o seu nome?</label>
+      <input class="in" id="f-nome" name="nome" type="text" inputmode="text" autocomplete="name" autocapitalize="words" maxlength="80" enterkeyhint="next" aria-describedby="e-nome" />
+      <p class="st__err" id="e-nome" data-err="nome" hidden></p>
     </section>
 
+    <!-- 09 · WhatsApp -->
+    <section class="st" data-step="whatsapp" data-stage="3" data-label="WhatsApp" data-kind="text">
+      <p class="st__group">{group(3)}</p>
+      <label class="st__q" for="f-whatsapp"><span data-greet hidden>Prazer, <span data-fill="nome"></span>. </span>Qual é o seu WhatsApp?</label>
+      <p class="st__hint" id="h-whatsapp">Com DDD. É por ele que a gente retorna.</p>
+      <input class="in in--big" id="f-whatsapp" name="whatsapp" type="tel" inputmode="tel" autocomplete="tel-national" placeholder="(00) 00000-0000" maxlength="20" enterkeyhint="next" aria-describedby="h-whatsapp e-whatsapp" />
+      <p class="st__err" id="e-whatsapp" data-err="whatsapp" hidden></p>
+    </section>
+
+    <!-- 10 · Instagram (opcional) -->
+    <section class="st" data-step="instagram" data-stage="3" data-label="Instagram" data-kind="text">
+      <p class="st__group">{group(3)}</p>
+      <label class="st__q" for="f-instagram">Qual é o Instagram da sua agropecuária?</label>
+      <p class="st__hint" id="h-instagram">Opcional. Pode ser o @ ou o link do perfil.</p>
+      <input class="in" id="f-instagram" name="instagram" type="text" inputmode="text" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="@sualoja" maxlength="200" enterkeyhint="send" aria-describedby="h-instagram e-instagram" />
+      <p class="st__err" id="e-instagram" data-err="instagram" hidden></p>
+      <p class="st__err" data-err="consentimento" hidden></p>
+    </section>
   </div>
 
   <div class="lf__actions">
@@ -222,9 +250,12 @@ const arrow = 'M2.5 8h10M8.5 3.5 13 8l-4.5 4.5';
       </button>
       <button type="submit" class="lf__btn lf__submit" data-submit>
         <span class="lf__spin" aria-hidden="true"></span>
-        <span data-submit-label>Enviar minha agropecuária para análise</span>
+        <span data-submit-label>Quero vender mais</span>
       </button>
     </div>
+    <p class="lf__legal">
+      Ao enviar, você concorda com a <a href="/politica-de-privacidade/" target="_blank" rel="noopener">Política de Privacidade<span class="visually-hidden"> (abre em nova aba)</span></a>.
+    </p>
     <p class="lf__enter" aria-hidden="true" data-js-only>ou pressione Enter ↵</p>
   </div>
 </form>
@@ -302,14 +333,35 @@ const arrow = 'M2.5 8h10M8.5 3.5 13 8l-4.5 4.5';
   }
 
   .lf__progress {
+    display: grid;
+    gap: 0.5rem;
+    padding-bottom: 0.875rem;
+  }
+
+  .lf__count {
     display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding-bottom: 0.75rem;
+    justify-content: space-between;
+    gap: 1rem;
+    font-size: 0.8125rem;
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .lf__count-label {
+    color: var(--ink-2);
+    font-weight: 500;
   }
 
   .lf__track {
-    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .lf__track li {
     height: 4px;
     border-radius: 4px;
     background: var(--mist);
@@ -318,18 +370,11 @@ const arrow = 'M2.5 8h10M8.5 3.5 13 8l-4.5 4.5';
 
   .lf__track span {
     display: block;
-    width: 5.5%;
+    width: 0;
     height: 100%;
     border-radius: 4px;
     background: var(--ink);
     transition: width 0.2s var(--ease);
-  }
-
-  .lf__count {
-    flex: none;
-    color: var(--ink-2);
-    font-size: 0.8125rem;
-    font-variant-numeric: tabular-nums;
   }
 
   .lf__hp {
@@ -453,20 +498,6 @@ const arrow = 'M2.5 8h10M8.5 3.5 13 8l-4.5 4.5';
     font-weight: 800;
   }
 
-  .st__alt {
-    justify-self: start;
-    min-height: 48px;
-    padding: 0 0.25rem;
-    margin-left: -0.25rem;
-    border: 0;
-    background: none;
-    color: var(--ink);
-    font-size: 1rem;
-    font-weight: 600;
-    text-decoration: underline;
-    text-underline-offset: 0.25em;
-  }
-
   /* Campos (sempre ≥ 16px para o iOS não dar zoom) ------------ */
   .in {
     width: 100%;
@@ -509,11 +540,6 @@ const arrow = 'M2.5 8h10M8.5 3.5 13 8l-4.5 4.5';
     background-repeat: no-repeat;
     background-position: right 1rem center;
     background-size: 1.1rem;
-  }
-
-  .in--area {
-    min-height: 9rem;
-    resize: vertical;
   }
 
   /* Alternativas: linha inteira clicável, ≥ 56px -------------- */
@@ -609,7 +635,7 @@ const arrow = 'M2.5 8h10M8.5 3.5 13 8l-4.5 4.5';
   }
 
   @media (hover: hover) and (pointer: fine) {
-    .opt:hover {
+    .opt:hover:not(:has(input:disabled)) {
       border-color: var(--ink);
     }
 
@@ -618,56 +644,46 @@ const arrow = 'M2.5 8h10M8.5 3.5 13 8l-4.5 4.5';
     }
   }
 
-  /* LGPD: caixa inteira tocável -------------------------------- */
-  .consent {
+  /* UF + cidade lado a lado (UF primeiro: libera a sugestão de cidades do IBGE) */
+  .st__row {
+    display: grid;
+    grid-template-columns: 6.5rem 1fr;
+    gap: 0.625rem;
+  }
+
+  .st__row .in--select {
+    padding-right: 2.25rem;
+    background-position: right 0.75rem center;
+  }
+
+  .st__picked {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Limite de escolhas atingido: as demais ficam indisponíveis */
+  .opt:has(input:disabled) {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .st__note {
     display: flex;
-    align-items: flex-start;
-    gap: 0.875rem;
-    min-height: 56px;
-    padding: 1rem;
-    border: 1.5px solid rgb(17 17 17 / 0.18);
+    align-items: center;
+    gap: 0.625rem;
+    margin-top: 0.25rem;
+    padding: 0.875rem 1rem;
     border-radius: 12px;
-    font-size: 1rem;
-    line-height: 1.5;
-    cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
+    background: var(--mist);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    line-height: 1.4;
   }
 
-  .consent input {
-    position: absolute;
-    opacity: 0;
-    width: 1px;
-    height: 1px;
-  }
-
-  .consent__box {
+  .st__note svg {
     flex: none;
-    width: 26px;
-    height: 26px;
-    border: 2px solid var(--ink);
-    border-radius: 6px;
+    width: 20px;
+    height: 20px;
   }
-
-  .consent:has(input:checked) {
-    border-color: var(--ink);
-  }
-
-  .consent:has(input:checked) .consent__box {
-    background: var(--ink) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.3 5 8.7l4.5-5.2' fill='none' stroke='%23fff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 16px no-repeat;
-  }
-
-  .consent:has(input:focus-visible) {
-    outline: 3px solid var(--ink);
-    outline-offset: 2px;
-  }
-
-  .consent a {
-    display: inline-block;
-    padding-block: 0.15rem;
-    font-weight: 700;
-    text-underline-offset: 0.2em;
-  }
-
 
   /* Ações: no fim do fluxo; fixas embaixo só nas telas de escolha
      (sem teclado aberto), com safe-area do iPhone -------------- */
@@ -726,6 +742,11 @@ const arrow = 'M2.5 8h10M8.5 3.5 13 8l-4.5 4.5';
     cursor: progress;
   }
 
+  .lf__submit {
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
   .lf__back-text {
     display: none;
     min-height: 56px;
@@ -767,6 +788,24 @@ const arrow = 'M2.5 8h10M8.5 3.5 13 8l-4.5 4.5';
     to {
       transform: rotate(360deg);
     }
+  }
+
+  .lf__legal {
+    margin-top: 0.625rem;
+    color: var(--ink-2);
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    text-align: center;
+  }
+
+  .lf__legal a {
+    color: var(--ink);
+    font-weight: 600;
+    text-underline-offset: 0.2em;
+  }
+
+  :global(.js) .lf:not(.is-last) .lf__legal {
+    display: none;
   }
 
   .lf__status {

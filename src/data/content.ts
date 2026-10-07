@@ -3,22 +3,25 @@
  * só o que ajuda o dono da loja a entender, confiar e agir.
  */
 
-/** Situações reais — cada uma já marca as dores correspondentes no formulário. */
+/**
+ * Situações reais — cada uma já marca a dificuldade correspondente no formulário
+ * (opções de DIFICULDADES_OPTIONS em src/lib/lead-schema.ts; o formulário leva no máximo 2).
+ */
 export const SITUATIONS = [
-  { text: 'Fez promoção de ração e quase ninguém ficou sabendo.', dores: ['Promoções com pouca repercussão'] },
+  { text: 'Fez promoção de ração e quase ninguém ficou sabendo.', dificuldades: ['Promoções que não trazem resultados'] },
   {
     text: 'Viu a concorrência aparecer enquanto seu Instagram parou.',
-    dores: ['Concorrência aparecendo mais', 'Instagram parado'],
+    dificuldades: ['Falta de divulgação e presença digital'],
   },
-  { text: 'Tem produto encostado no estoque há meses.', dores: ['Produtos encalhados'] },
-  { text: 'Depende dos mesmos clientes de sempre.', dores: ['Poucos clientes novos'] },
+  { text: 'Tem produto encostado no estoque há meses.', dificuldades: ['Estoque parado'] },
+  { text: 'Depende dos mesmos clientes de sempre.', dificuldades: ['Dificuldade para conquistar novos clientes'] },
   {
     text: 'Já contratou agência que entregou post, mas não mostrou impacto nas vendas.',
-    dores: ['Marketing sem resultado'],
+    dificuldades: ['Poucos clientes entrando na loja'],
   },
   {
     text: 'O marketing depende de alguém tirar foto entre um atendimento e outro.',
-    dores: ['Quero crescer, mas não sei como estruturar o marketing'],
+    dificuldades: ['Quero crescer, mas não sei por onde começar'],
   },
 ];
 

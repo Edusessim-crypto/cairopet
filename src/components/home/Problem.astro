@@ -45,7 +45,7 @@ const TAGS = [
         {
           SITUATIONS.map((s, i) => (
             <label class="check__item">
-              <input type="checkbox" value={i} data-dores={s.dores.join('|')} />
+              <input type="checkbox" value={i} data-dificuldades={s.dificuldades.join('|')} />
               <span class="check__box" aria-hidden="true">
                 <svg viewBox="0 0 12 12">
                   <path d="M2.5 6.3 5 8.7l4.5-5.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
@@ -57,7 +57,7 @@ const TAGS = [
         }
       </div>
       <p class="check__count mono" aria-live="polite" data-js-only>
-        <span data-count>0</span> de {SITUATIONS.length} marcadas<span data-note hidden> · elas já vão marcadas no formulário</span>
+        <span data-count>0</span> de {SITUATIONS.length} marcadas<span data-note hidden> · a gente leva isso para o formulário</span>
       </p>
     </fieldset>
   </div>
@@ -81,9 +81,9 @@ const TAGS = [
       const checked = boxes.filter((b) => b.checked);
       count.textContent = String(checked.length);
       note.hidden = checked.length === 0;
-      const dores = [...new Set(checked.flatMap((b) => (b.dataset.dores ?? '').split('|')).filter(Boolean))];
+      const dificuldades = [...new Set(checked.flatMap((b) => (b.dataset.dificuldades ?? '').split('|')).filter(Boolean))];
       try {
-        localStorage.setItem(KEY, JSON.stringify({ marked: checked.map((b) => b.value), dores }));
+        localStorage.setItem(KEY, JSON.stringify({ marked: checked.map((b) => b.value), dificuldades }));
       } catch {
         /* sem armazenamento: segue sem pré-marcar */
       }

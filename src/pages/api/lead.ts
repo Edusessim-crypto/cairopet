@@ -26,17 +26,21 @@ async function readBody(request: Request): Promise<{ raw: Record<string, unknown
   const raw: Record<string, unknown> = {};
   for (const key of new Set(form.keys())) {
     const values = form.getAll(key).map(String);
-    raw[key] = key === 'problemas' ? values : values[0];
+    raw[key] = key === 'dificuldades' ? values : values[0];
   }
   return { raw, isJson: false };
 }
 
-/** Formato enviado ao webhook (CRM, n8n, Make, Zapier, planilha…). */
+/**
+ * Formato enviado ao webhook (Apps Script → planilha). O Apps Script grava cada campo
+ * pelo nome da coluna e calcula a classificação comercial — ela não sai daqui.
+ */
 function toWebhookPayload(lead: Lead, meta: { ip?: string; userAgent?: string }) {
   const phone = normalizeWhatsapp(lead.whatsapp);
   const now = new Date().toISOString();
   return {
     tipo: 'lead_site_cairopet',
+    versao_formulario: 3,
     recebido_em: now,
     contato: {
       nome: lead.nome,
@@ -48,21 +52,16 @@ function toWebhookPayload(lead: Lead, meta: { ip?: string; userAgent?: string })
       cidade: lead.cidade,
       uf: lead.uf,
       instagram: lead.instagram || null,
-      tipo_negocio: lead.tipo_negocio,
-      tamanho: lead.tamanho,
+      tipo_estabelecimento: lead.tipo_estabelecimento,
       faturamento: lead.faturamento,
     },
     qualificacao: {
-      marketing_atual: lead.marketing_atual,
-      investimento_anuncios: lead.investimento_anuncios,
-      dores: lead.dores,
-      objetivo: lead.objetivo,
-      momento: lead.momento,
-      decisor: lead.decisor,
-      faixa_investimento: lead.faixa_investimento,
-      contexto: lead.contexto || null,
+      dificuldades: lead.dificuldades,
+      urgencia: lead.urgencia,
+      poder_decisao: lead.poder_decisao,
     },
-    consentimento_lgpd: { aceito: lead.consentimento, em: now },
+    // Aceite dado pelo aviso junto ao botão de envio ("Ao enviar, você concorda...").
+    consentimento_lgpd: { aceito: lead.consentimento, em: now, forma: 'aviso junto ao botão de envio' },
     origem: { ...lead.tracking, ip: meta.ip ?? null, user_agent: meta.userAgent ?? null },
   };
 }

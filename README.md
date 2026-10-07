@@ -6,11 +6,11 @@ Objetivo único: o dono da agropecuária preencher o formulário **"Minha cidade
 **Stack:** Astro 7 (HTML estático, ~17 KB de JS, sem framework) + 1 rota de servidor (`/api/lead`) na Vercel.
 Lighthouse (build de produção): mobile 98 · acessibilidade 100 · boas práticas 100 · SEO 100 (desktop 100 em tudo).
 
-**Páginas:** `/` (landing, 8 seções) · `/formulario/` (16 etapas, uma pergunta por tela) · `/obrigado/` (confirmação + botão para falar no WhatsApp) · `/politica-de-privacidade/`.
+**Páginas:** `/` (landing, 8 seções) · `/formulario/` (10 perguntas, uma por tela, em 3 etapas: Sua agropecuária · Seu negócio · Seus dados) · `/obrigado/` (confirmação + botão para falar no WhatsApp) · `/politica-de-privacidade/`.
 
 **Conceito visual — "Os objetos do balcão":** etiqueta de gôndola (a loja tem estoque, preço, equipe; falta movimento), cupom (a prova do case AgroUnião) e carimbo com o símbolo oficial ("uma agropecuária por cidade").
 
-**Fluxo de envio (não alterar sem motivo):** enviar → botão desabilitado → `fetch` POST com `keepalive` (até 25 s) → espera a API responder `{ ok: true, saved: true }` (só depois de a planilha confirmar) → `dataLayer.push({ event: 'lead', event_id })` → GTM dispara GA4 `generate_lead` + Meta `Lead` (aguardado por `eventCallback` até 2 s) → `/obrigado/` → WhatsApp `5551995757018` com mensagem pronta. Se falhar: fica no formulário, respostas mantidas, botão liberado, mensagem de erro + botão do WhatsApp; um novo envio reaproveita o mesmo `event_id`. As situações marcadas na home chegam pré-marcadas na etapa "Dores".
+**Fluxo de envio (não alterar sem motivo):** enviar → botão desabilitado → `fetch` POST com `keepalive` (até 25 s) → espera a API responder `{ ok: true, saved: true }` (só depois de a planilha confirmar) → `dataLayer.push({ event: 'lead', event_id })` → GTM dispara GA4 `generate_lead` + Meta `Lead` (aguardado por `eventCallback` até 2 s) → `/obrigado/` → WhatsApp `5551995757018` com mensagem pronta. Se falhar: fica no formulário, respostas mantidas, botão liberado, mensagem de erro + botão do WhatsApp; um novo envio reaproveita o mesmo `event_id`. As situações marcadas na home chegam pré-marcadas em "O que impede de vender mais" (no máximo 2).
 
 ```bash
 npm install
@@ -46,8 +46,10 @@ O site só faz `dataLayer.push`. O **GTM (`GTM-MQPCCFFG`) é a única camada do 
 | — | carregamento | GA4 `page_view` / Meta `PageView` |
 | `cta_click` | clique em qualquer CTA (com `location`) | — |
 | `form_start` | primeira resposta de verdade no formulário (1× por preenchimento; abrir e sair não conta) | GA4 `form_start` / Meta `InicioFormulario` |
-| `form_step` | cada etapa concluída (`step`, `step_name`) | — |
+| `form_step_view` | chegada a cada etapa (`step` 1–3, `step_name`), 1× por preenchimento — `step: 3` = chegou à última etapa | — (criar no GTM se quiser o funil no GA4) |
+| `form_step` | etapa 1 ou 2 concluída (`step`, `step_name`), 1× por preenchimento | — (criar no GTM se quiser o funil no GA4) |
 | `form_submit` | tentativa de envio já validada, **antes** da API (não é conversão) | — |
+| `form_error` | envio falhou: `error_type` = `network` · `timeout` · `server` (com `status`) · `validation` (422, com `fields`) | — (criar no GTM se quiser) |
 | **`lead`** + `event_id` | **no formulário, só depois de a API responder `saved: true`**, e antes de abrir `/obrigado/` | GA4 `generate_lead` + Meta `Lead` (eventID = `event_id`) |
 | `whatsapp_click` + `location` | clique em link de WhatsApp | GA4 `whatsapp_click` / Meta `Contact` |
 
@@ -68,14 +70,24 @@ UTMs (`utm_source`, `utm_medium`, `utm_campaign`, `utm_content`, `utm_term`), `f
 ```json
 {
   "tipo": "lead_site_cairopet",
+  "versao_formulario": 3,
   "recebido_em": "…",
   "contato": { "nome": "…", "whatsapp": "(34) 99999-8888", "whatsapp_e164": "+5534999998888" },
-  "loja": { "nome": "…", "cidade": "Uberaba", "uf": "MG", "instagram": "@…", "tipo_negocio": "…", "tamanho": "…", "faturamento": "…" },
-  "qualificacao": { "marketing_atual": "…", "investimento_anuncios": "…", "dores": ["…"], "objetivo": "…", "momento": "…", "decisor": "…", "faixa_investimento": "…", "contexto": "…" },
-  "consentimento_lgpd": { "aceito": true, "em": "…" },
+  "loja": { "nome": "…", "cidade": "Uberaba", "uf": "MG", "instagram": "@…", "tipo_estabelecimento": "…", "faturamento": "…" },
+  "qualificacao": { "dificuldades": ["…"], "urgencia": "…", "poder_decisao": "…" },
+  "consentimento_lgpd": { "aceito": true, "em": "…", "forma": "aviso junto ao botão de envio" },
   "origem": { "utm_source": "…", "utm_campaign": "…", "fbclid": "…", "landing_page": "…", "event_id": "…", "ip": "…", "user_agent": "…" }
 }
 ```
+
+### Planilha e classificação (Apps Script — `integrations/google-sheets/Code.gs`)
+
+- Grava **pelo nome do cabeçalho** (não por posição). Colunas que faltam são criadas só no final; nenhuma coluna existente é apagada, renomeada ou reordenada, e linhas antigas não são reescritas.
+- Colunas do formulário anterior que não são mais perguntadas (Tamanho, Marketing atual, Investimento em anúncios, Tipo de negócio, Dores, Objetivo, Momento, Decisor, **Faixa de investimento**, Contexto) ficam vazias nos leads novos.
+- Colunas novas no fim: Tipo de estabelecimento · Dificuldades (separadas por vírgula) · Urgência · Poder de decisão · **Classificação**.
+- O formulário não oferece faixa abaixo de R$ 50 mil (a menor é "De R$ 50 mil a R$ 79.999", mais "Prefiro não informar").
+- **Classificação** é calculada só no Apps Script (nunca no navegador), nesta ordem: faturamento abaixo de `FATURAMENTO_MINIMO` (hoje 50000; só acontece se o mínimo subir) → `ABAIXO DO PERFIL FINANCEIRO`; "Prefiro não informar" ou tipo "Outro" → `EM AVALIAÇÃO`; dono/responsável + "o quanto antes"/"30 dias" → `QUENTE`; resto → `MORNO`. Para mudar o corte, altere só a constante (vale 50000, 80000, 150000 ou 300000) e publique nova versão — o site não muda.
+- Aviso por e-mail a cada lead novo (propriedade `NOTIFY_EMAIL`, ou o dono do script), com a classificação no assunto. No editor: `testarEmail()` e `testarClassificacao()`.
 
 Se o webhook pedir autenticação, defina `LEAD_WEBHOOK_TOKEN` (enviado como `Authorization: Bearer …`).
 
@@ -105,8 +117,7 @@ Em [`src/data/cases.ts`](src/data/cases.ts). Enquanto vazios, aparecem **só em 
 - `[DEPOIMENTO AGROUNIÃO]`, `[CASE 2]`, `[DEPOIMENTO 3]` — preencher e marcar `published: true` quando houver autorização.
 
 Outros pontos marcados no código:
-- Pergunta de qualificação (Etapa 7 — "Momento") em [`src/lib/lead-schema.ts`](src/lib/lead-schema.ts), marcada `[AJUSTAR]`: trocar por faixa de investimento se o comercial precisar.
-- E-mail é opcional no formulário (WhatsApp é obrigatório) para reduzir atrito.
+- O formulário não pergunta quanto o cliente quer investir na agência (decisão comercial): a qualificação financeira é pelo faturamento; valores e planos ficam para o atendimento.
 
 ---
 
@@ -128,7 +139,3 @@ Outros pontos marcados no código:
 - Arquivos oficiais intactos em `brand/originais/` (logos + 3 brand boards).
 - `scripts/prepare-brand-assets.py` só **recorta a margem transparente**, extrai a versão chapada do símbolo (a mesma do painel *Símbolo* do brand board) e gera favicons e a imagem de Open Graph. Nenhuma letra é redesenhada; a logo nunca é recriada com fonte.
 - Paleta: `#000000 #FFFFFF #111111 #E8E8E8 #262626`, com off-white `#F7F7F5` como fundo principal. Fontes: Archivo Black, Inter, Space Mono (servidas pelo próprio site).
-
-## Opções do formulário a validar com o comercial
-
-Faixas de **faturamento**, **investimento em anúncios** e **faixa de investimento** foram propostas por mim e estão marcadas `[AJUSTAR]` em `src/lib/lead-schema.ts`.
