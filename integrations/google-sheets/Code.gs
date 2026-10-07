@@ -13,13 +13,14 @@
  * Propriedades do script (Configurações do projeto → Propriedades do script):
  *   TOKEN                = senha usada na URL do webhook (?token=...)
  *   NOTIFICATION_EMAILS  = e-mail(s) que recebem o aviso de lead, separados por vírgula
- *   AVISOS_EM_FILA       = criada por instalarAvisos (não precisa criar à mão)
+ *   AVISOS_*             = criadas automaticamente pelo script (não mexer)
  *
- * VELOCIDADE DO ENVIO (recomendado, uma vez):
- *   No editor, selecione a função instalarAvisos e clique em Executar.
- *   O lead passa a ser salvo e confirmado na hora, e o e-mail sai numa fila,
- *   em até 1 minuto — o site não espera mais o e-mail para mostrar o "obrigado".
- *   Para voltar ao e-mail imediato: executar desinstalarAvisos.
+ * VELOCIDADE DO ENVIO (automático, nada para rodar):
+ *   No primeiro lead, o script liga sozinho a fila de avisos: o lead é salvo e
+ *   confirmado na hora, e o e-mail sai em até 1 minuto — o site não espera mais
+ *   o e-mail para mostrar o "obrigado". Se o Google não permitir, o e-mail
+ *   continua saindo na hora (como antes) e o script tenta de novo no dia seguinte.
+ *   Para voltar ao e-mail imediato de vez: executar desinstalarAvisos.
  *
  * Depois de editar: Implantar → Gerenciar implantações → editar → Nova versão
  * (a URL continua a mesma).
@@ -234,10 +235,14 @@ function doPost(e) {
   }
 
   // NOTIFICA DEPOIS — fora da trava, para não segurar outros envios.
-  // Com a fila ligada (instalarAvisos), o site não espera o e-mail.
+  // Com a fila ligada, o site não espera o e-mail.
+
+  const filaLigada =
+    props.AVISOS_EM_FILA === '1' ||
+    ligarFilaAutomaticamente_(props);
 
   const enfileirado =
-    props.AVISOS_EM_FILA === '1' &&
+    filaLigada &&
     enfileirarAviso_(lead, classificacao);
 
   if (!enfileirado) {
@@ -1233,6 +1238,50 @@ function enfileirarAviso_(lead, classificacao) {
 }
 
 /**
+ * Liga a fila sozinho (no máximo 1 tentativa por dia, para não atrasar todo
+ * envio se faltar autorização). Respeita quem desligou com desinstalarAvisos.
+ */
+
+function ligarFilaAutomaticamente_(props) {
+
+  if (props.AVISOS_DESLIGADOS === '1') {
+    return false;
+  }
+
+  const hoje = Utilities.formatDate(
+    new Date(),
+    CAIRO_CONFIG.TIMEZONE,
+    'yyyy-MM-dd'
+  );
+
+  if (props.AVISOS_TENTATIVA === hoje) {
+    return false;
+  }
+
+  try {
+
+    PropertiesService
+      .getScriptProperties()
+      .setProperty('AVISOS_TENTATIVA', hoje);
+
+    instalarAvisos();
+
+    return true;
+
+  } catch (error) {
+
+    console.error(
+      'Fila de avisos não ligada (e-mail segue na hora):',
+      error
+    );
+
+    return false;
+
+  }
+
+}
+
+/**
  * Rodado pelo gatilho a cada minuto: envia os avisos pendentes
  * (cada um no máximo uma vez).
  */
@@ -1290,8 +1339,8 @@ function processarAvisos() {
 }
 
 /**
- * Rodar UMA vez no editor: liga a fila de avisos
- * (gatilho de 1 em 1 minuto). Pode rodar de novo sem duplicar.
+ * Liga a fila de avisos (gatilho de 1 em 1 minuto). O doPost chama sozinho;
+ * também pode ser rodado no editor. Rodar de novo não duplica o gatilho.
  */
 
 function instalarAvisos() {
@@ -1305,9 +1354,12 @@ function instalarAvisos() {
     .everyMinutes(1)
     .create();
 
-  PropertiesService
-    .getScriptProperties()
-    .setProperty('AVISOS_EM_FILA', '1');
+  const props =
+    PropertiesService.getScriptProperties();
+
+  props.setProperty('AVISOS_EM_FILA', '1');
+
+  props.deleteProperty('AVISOS_DESLIGADOS');
 
   console.log(
     'Fila de avisos ligada: os e-mails saem em até 1 minuto.'
@@ -1326,9 +1378,12 @@ function desinstalarAvisos() {
     .filter(t => t.getHandlerFunction() === 'processarAvisos')
     .forEach(t => ScriptApp.deleteTrigger(t));
 
-  PropertiesService
-    .getScriptProperties()
-    .deleteProperty('AVISOS_EM_FILA');
+  const props =
+    PropertiesService.getScriptProperties();
+
+  props.deleteProperty('AVISOS_EM_FILA');
+
+  props.setProperty('AVISOS_DESLIGADOS', '1');
 
   processarAvisos();
 

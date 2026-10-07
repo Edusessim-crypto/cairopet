@@ -86,7 +86,7 @@ UTMs (`utm_source`, `utm_medium`, `utm_campaign`, `utm_content`, `utm_term`), `f
 - Colunas: Recebido em · Agropecuária · Cidade · UF · Tipo de negócio · Faturamento · Dores · Momento · Decisor · Nome · WhatsApp · Link WhatsApp · Instagram · Perfil financeiro · **Classificação** · **Pontuação** · **Motivo da classificação** · LGPD aceita · UTMs · fbclid · gclid · Página de entrada · Origem (referrer) · ID do envio.
 - **Classificação** só no Apps Script (nunca no navegador), com `CAIRO_CONFIG.FATURAMENTO_MINIMO` (50000): abaixo do mínimo → `ABAIXO DO PERFIL FINANCEIRO`; faturamento não informado ou tipo fora de agropecuária/casa de ração → `EM AVALIAÇÃO`; decisor direto + começar em até 30 dias → `QUENTE`; resto → `MORNO`. Pontuação comercial de 0 a 100.
 - Tipo de estabelecimento é lido de `loja.tipo_estabelecimento` (o `tipo` da raiz do payload é `lead_site_cairopet`, não o tipo da loja).
-- Aviso por e-mail em HTML para `NOTIFICATION_EMAILS`. **Fila de avisos (recomendada):** rodar `instalarAvisos` uma vez → o lead é salvo e confirmado sem esperar o e-mail, que sai em até 1 minuto (gatilho `processarAvisos`). `desinstalarAvisos` volta ao e-mail imediato.
+- Aviso por e-mail em HTML para `NOTIFICATION_EMAILS`. **Fila de avisos automática:** no primeiro lead o script cria sozinho o gatilho `processarAvisos` (1 em 1 minuto) → o lead é salvo e confirmado sem esperar o e-mail, que sai em até 1 minuto. Sem autorização do Google, o e-mail segue na hora e o script tenta de novo no dia seguinte. `desinstalarAvisos` desliga de vez (volta ao e-mail imediato).
 - O site chama `GET /api/lead?aquecer=1` ao chegar na etapa 3, que aciona o `doGet` (não grava nada) para acordar o script antes do envio.
 - No editor: `testarEmail()` e `testarClassificacao()`.
 
