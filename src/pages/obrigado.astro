@@ -4,8 +4,6 @@ import Logo from '../components/brand/Logo.astro';
 ---
 
 <BaseLayout title="Recebemos suas informações | CairoPet" noindex>
-  <link href="https://assets.calendly.com/assets/external/widget.css" rel="stylesheet" slot="head" />
-
   <main class="ok" id="conteudo">
     <header class="ok__top">
       <a href="/" aria-label="CairoPet — página inicial"><Logo variant="black" width={88} loading="eager" alt="" /></a>
@@ -54,20 +52,33 @@ import Logo from '../components/brand/Logo.astro';
     </div>
   </main>
 
-  <script src="https://assets.calendly.com/assets/external/widget.js" type="text/javascript" async is:inline></script>
 </BaseLayout>
 
 <script>
+  function loadCalendly(cb: () => void) {
+    if (window.Calendly) { cb(); return; }
+
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://assets.calendly.com/assets/external/widget.css';
+    document.head.appendChild(link);
+
+    const script = document.createElement('script');
+    script.src = 'https://assets.calendly.com/assets/external/widget.js';
+    script.onload = cb;
+    document.head.appendChild(script);
+  }
+
   document.getElementById('btn-calendly')?.addEventListener('click', (e) => {
     e.preventDefault();
-    window.Calendly?.initPopupWidget({ url: 'https://calendly.com/cairopet/briefing-cairopet' });
+    loadCalendly(() => {
+      window.Calendly.initPopupWidget({ url: 'https://calendly.com/cairopet/briefing-cairopet' });
+    });
 
-    // GTM: abertura do Calendly
     window.dataLayer = window.dataLayer || [];
     window.dataLayer.push({ event: 'calendly_open', location: 'obrigado' });
   });
 
-  // GTM: agendamento confirmado
   window.addEventListener('message', (e) => {
     if (e.origin !== 'https://calendly.com') return;
     if (e.data?.event === 'calendly.event_scheduled') {
