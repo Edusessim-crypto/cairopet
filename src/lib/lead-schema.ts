@@ -61,7 +61,6 @@ export const FATURAMENTO_OPTIONS = [
   'De R$ 80 mil a R$ 149.999',
   'De R$ 150 mil a R$ 299.999',
   'R$ 300 mil ou mais',
-  'Prefiro não informar',
 ] as const;
 
 export const DIFICULDADES_OPTIONS = [
@@ -201,7 +200,7 @@ export const validators: Partial<Record<keyof Lead, (lead: Lead) => string | nul
   uf: (l) => (oneOf(l.uf, UFS.map(([uf]) => uf)) ? null : 'Escolha o estado.'),
   cidade: (l) => (l.cidade.length >= 2 ? null : 'Informe a cidade.'),
   tipo_estabelecimento: (l) => choose(TIPO_ESTABELECIMENTO_OPTIONS, 'Escolha o tipo do estabelecimento.')(l.tipo_estabelecimento),
-  faturamento: (l) => choose(FATURAMENTO_OPTIONS, 'Escolha uma faixa — ou "Prefiro não informar".')(l.faturamento),
+  faturamento: (l) => choose(FATURAMENTO_OPTIONS, 'Escolha uma faixa de faturamento.')(l.faturamento),
   dificuldades: (l) => {
     if (l.dificuldades.length === 0) return 'Marque pelo menos uma opção.';
     if (l.dificuldades.length > MAX_DIFICULDADES) return `Marque no máximo ${MAX_DIFICULDADES} opções.`;

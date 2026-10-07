@@ -1809,7 +1809,7 @@ function testarClassificacao() {
     },
 
     {
-      faturamento: 'Prefiro não informar',
+      faturamento: 'De R$ 50 mil a R$ 79.999',
       momento: 'Quero começar o quanto antes',
       decisor: 'Sim, sou o proprietário',
       tipo: 'Agropecuária'
