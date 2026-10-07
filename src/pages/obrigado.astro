@@ -1,13 +1,11 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Logo from '../components/brand/Logo.astro';
-import WhatsAppIcon from '../components/WhatsAppIcon.astro';
-import { whatsappLink } from '../lib/site';
-
-const WHATSAPP_MSG = 'Olá! Acabei de preencher o formulário da CairoPet e gostaria de saber mais.';
 ---
 
 <BaseLayout title="Recebemos suas informações | CairoPet" noindex>
+  <link href="https://assets.calendly.com/assets/external/widget.css" rel="stylesheet" slot="head" />
+
   <main class="ok" id="conteudo">
     <header class="ok__top">
       <a href="/" aria-label="CairoPet — página inicial"><Logo variant="black" width={88} loading="eager" alt="" /></a>
@@ -15,29 +13,41 @@ const WHATSAPP_MSG = 'Olá! Acabei de preencher o formulário da CairoPet e gost
 
     <div class="ok__body">
       <h1 class="ok__title">Recebemos suas informações!</h1>
-      <p class="ok__text">Agora fale com nosso time pelo WhatsApp para continuarmos.</p>
+      <p class="ok__text">Escolha um horário para o seu briefing com nossa equipe.</p>
 
       <a
         class="ok__btn"
-        href={whatsappLink(WHATSAPP_MSG)}
-        target="_blank"
-        rel="noopener"
-        data-whatsapp
-        data-track="whatsapp"
+        href=""
+        id="btn-calendly"
+        data-track="calendly_open"
         data-location="obrigado"
       >
-        <WhatsAppIcon class="ok__wa-icon" />
-        <span>Falar com a CairoPet no WhatsApp</span>
+        <span>Agendar meu briefing</span>
       </a>
     </div>
   </main>
+
+  <script src="https://assets.calendly.com/assets/external/widget.js" type="text/javascript" async is:inline></script>
 </BaseLayout>
 
 <script>
-  // Celular: abre direto no app do WhatsApp (mesma aba). Computador: nova aba.
-  if (matchMedia('(pointer: coarse)').matches) {
-    document.querySelector('[data-whatsapp]')?.removeAttribute('target');
-  }
+  document.getElementById('btn-calendly')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    window.Calendly?.initPopupWidget({ url: 'https://calendly.com/cairopet/briefing-cairopet' });
+
+    // GTM: abertura do Calendly
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({ event: 'calendly_open', location: 'obrigado' });
+  });
+
+  // GTM: agendamento confirmado
+  window.addEventListener('message', (e) => {
+    if (e.origin !== 'https://calendly.com') return;
+    if (e.data?.event === 'calendly.event_scheduled') {
+      window.dataLayer = window.dataLayer || [];
+      window.dataLayer.push({ event: 'calendly_scheduled', location: 'obrigado' });
+    }
+  });
 </script>
 
 <style>
@@ -95,19 +105,20 @@ const WHATSAPP_MSG = 'Olá! Acabei de preencher o formulário da CairoPet e gost
     margin-top: 0.75rem;
     padding: 0 1.25rem;
     border-radius: 12px;
-    background: var(--whatsapp);
-    color: var(--ink);
+    background: var(--ink);
+    color: var(--bg);
     font-size: 1rem;
     font-weight: 700;
     line-height: 1.25;
     text-align: center;
     text-decoration: none;
+    cursor: pointer;
     touch-action: manipulation;
   }
 
   .ok__btn:hover,
   .ok__btn:active {
-    background: var(--whatsapp-press);
+    opacity: 0.85;
   }
 
   .ok__btn span {
@@ -126,12 +137,6 @@ const WHATSAPP_MSG = 'Olá! Acabei de preencher o formulário da CairoPet e gost
     .ok__btn {
       font-size: 1.125rem;
     }
-  }
-
-  .ok__btn :global(.ok__wa-icon) {
-    flex: none;
-    width: 24px;
-    height: 24px;
   }
 
 
