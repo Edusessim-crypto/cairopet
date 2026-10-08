@@ -1,0 +1,159 @@
+---
+/**
+ * Fechamento: espelho da capa. A escassez é só a real (uma agropecuária por cidade)
+ * e a apresentação termina numa pergunta.
+ */
+import { Picture } from 'astro:assets';
+import Slide from '../Slide.astro';
+import Stamp from '../../Stamp.astro';
+import { CLOSING } from '../../../data/presentation';
+---
+
+<Slide id="fechamento">
+  <div class="cl">
+    <p class="pr-mono cl__kicker" data-reveal>{CLOSING.kicker}</p>
+    <div class="cl__head">
+      <h2 class="cl__title" data-reveal="title" set:html={CLOSING.title} />
+      <div class="cl__stamp">
+        <Stamp tone="light" size="clamp(7rem, calc(var(--u) * 16), 24rem)" />
+      </div>
+    </div>
+    <p class="pr-lead cl__text" data-reveal>{CLOSING.text}</p>
+    <p class="pr-statement cl__question" data-reveal>{CLOSING.question}</p>
+  </div>
+
+  <div class="cl__photo" data-reveal>
+    <Picture
+      src={CLOSING.photo.src}
+      alt={CLOSING.photo.alt}
+      formats={['avif', 'webp']}
+      widths={[400, CLOSING.photo.src.width]}
+      sizes="(min-width: 60rem) 36vw, 90vw"
+      loading="lazy"
+      decoding="async"
+    />
+  </div>
+</Slide>
+
+<style>
+  .cl {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .cl__kicker {
+    color: var(--c-fg-2);
+  }
+
+  .cl__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem 1.5rem;
+    margin-top: 0.6em;
+  }
+
+  .cl__title {
+    font-family: var(--font-display), 'Arial Black', sans-serif;
+    font-size: var(--fs-display);
+    font-weight: 400;
+    line-height: 0.98;
+    letter-spacing: -0.03em;
+    text-transform: uppercase;
+  }
+
+  .cl__title :global(em) {
+    color: var(--c-em);
+    font-style: normal;
+  }
+
+  .cl__stamp {
+    transform: rotate(-8deg);
+  }
+
+  .cl__text {
+    max-width: 27em;
+    margin-top: clamp(1rem, 3dvh, 1.75rem);
+    color: rgb(255 255 255 / 0.82);
+  }
+
+  .cl__question {
+    margin-top: clamp(1.25rem, 4dvh, 2.5rem);
+    font-size: calc(var(--fs-h2) * 1.2);
+  }
+
+  /* Igual à capa: no celular a foto ocupa o espaço que sobra embaixo, de ponta a ponta */
+  .cl__photo {
+    flex: 1 1 0;
+    min-height: 12rem;
+    margin: clamp(0.75rem, 2.5dvh, 1.5rem) calc(-1 * (var(--px) + env(safe-area-inset-right))) calc(-1 * var(--pb))
+      calc(-1 * (var(--px) + env(safe-area-inset-left)));
+    pointer-events: none;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 35%);
+    mask-image: linear-gradient(to bottom, transparent 0, #000 35%);
+  }
+
+  .cl__photo :global(picture),
+  .cl__photo :global(img) {
+    width: 100%;
+    height: 100%;
+  }
+
+  .cl__photo :global(img) {
+    object-fit: cover;
+    object-position: 74% 16%;
+  }
+
+  /* Momento: o carimbo "bate" na tela, uma vez */
+  :global(.slide.is-active) .cl__stamp {
+    animation: cl-stamp 0.45s var(--ease) 0.5s both;
+  }
+
+  @keyframes cl-stamp {
+    from {
+      opacity: 0;
+      transform: scale(1.35) rotate(-18deg);
+    }
+  }
+
+  @media (min-width: 60rem) and (min-aspect-ratio: 1/1) {
+    .cl {
+      max-width: 66%;
+      margin-block: auto;
+    }
+
+    .cl__head {
+      flex-wrap: nowrap;
+      gap: calc(var(--gap) * 1.2);
+    }
+
+    .cl__stamp {
+      flex: none;
+    }
+
+    .cl__photo {
+      position: absolute;
+      z-index: 0;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      flex: none;
+      width: auto;
+      height: 100%;
+      min-height: 0;
+      margin: 0;
+      aspect-ratio: 582 / 962;
+      -webkit-mask-image: linear-gradient(to right, transparent 0, #000 30%), linear-gradient(to bottom, transparent 0, #000 12%);
+      mask-image: linear-gradient(to right, transparent 0, #000 30%), linear-gradient(to bottom, transparent 0, #000 12%);
+      -webkit-mask-composite: source-in;
+      mask-composite: intersect;
+    }
+
+    .cl__photo :global(img) {
+      object-position: center;
+    }
+  }
+</style>

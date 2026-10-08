@@ -10,7 +10,14 @@ import { EXPERIENCE } from '../../../data/presentation';
     {
       EXPERIENCE.stats.map((stat) => (
         <div class="xp__item" data-reveal>
-          <dt class="xp__value">{stat.value}</dt>
+          <dt class="xp__value">
+            {/* numa linha só: quebra entre expressões vira espaço no HTML */}
+            {stat.count ? (
+              <>{stat.count.prefix}<span data-count={stat.count.to}>{stat.count.to}</span>{stat.count.suffix}</>
+            ) : (
+              stat.value
+            )}
+          </dt>
           <dd class="xp__text">{stat.text}</dd>
         </div>
       ))
@@ -38,6 +45,7 @@ import { EXPERIENCE } from '../../../data/presentation';
   .xp__value {
     font-family: var(--font-display), 'Arial Black', sans-serif;
     font-size: var(--fs-stat);
+    font-variant-numeric: tabular-nums;
     line-height: 0.95;
     letter-spacing: -0.045em;
     white-space: nowrap;

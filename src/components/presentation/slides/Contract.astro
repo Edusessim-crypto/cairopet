@@ -1,0 +1,202 @@
+---
+/**
+ * Contrato em dois tempos.
+ * pergunta: o medo do lojista em voz alta ("vou ficar preso"), com os prazos de mercado.
+ * resposta: os mesmos prazos riscados e o 0 de fidelidade (conta de 24 até 0).
+ */
+import Slide from '../Slide.astro';
+import { CONTRACT, NO_LOCK_IN } from '../../../data/presentation';
+
+interface Props {
+  step: 'pergunta' | 'resposta';
+}
+
+const { step } = Astro.props;
+const answer = step === 'resposta';
+---
+
+<Slide id={answer ? 'fidelidade' : 'contrato'} class={answer ? 'ct--answer' : 'ct--question'}>
+  {
+    answer ? (
+      <div class="ct">
+        <ul class="ct__options" data-reveal>
+          {CONTRACT.options.map((option, k) => (
+            <li class="pr-pill ct__pill" style={`--k:${k}`}>
+              <s>
+                <span>{option}</span>
+              </s>
+            </li>
+          ))}
+        </ul>
+
+        <p class="ct__zero" data-reveal>
+          <span class="ct__num" data-count={NO_LOCK_IN.value} data-count-from={NO_LOCK_IN.from} data-count-delay="700">{NO_LOCK_IN.value}</span>
+          <span class="ct__unit">{NO_LOCK_IN.label}</span>
+        </p>
+
+        <p class="pr-statement ct__statement" data-reveal>
+          {NO_LOCK_IN.statement.map((line) => (
+            <span>{line}</span>
+          ))}
+        </p>
+
+        <p class="pr-note ct__note" data-reveal>
+          {NO_LOCK_IN.note}
+        </p>
+      </div>
+    ) : (
+      <div class="ct">
+        <p class="pr-mono ct__kicker" data-reveal>
+          {CONTRACT.kicker}
+        </p>
+        <h2 class="ct__title" data-reveal="title" set:html={CONTRACT.title} />
+        <ul class="ct__options">
+          {CONTRACT.options.map((option, k) => (
+            <li class="pr-pill ct__pill" style={`--k:${k}`}>
+              {option}
+            </li>
+          ))}
+        </ul>
+      </div>
+    )
+  }
+</Slide>
+
+<style>
+  .ct {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    margin-block: auto;
+  }
+
+  .ct__kicker {
+    color: var(--c-fg-2);
+  }
+
+  .ct__title {
+    margin-top: 0.35em;
+    font-family: var(--font-display), 'Arial Black', sans-serif;
+    font-size: calc(var(--fs-display) * 1.15);
+    font-weight: 400;
+    line-height: 0.98;
+    letter-spacing: -0.035em;
+    text-wrap: balance;
+  }
+
+  .ct__title :global(em) {
+    color: var(--c-em);
+    font-style: normal;
+  }
+
+  .ct__options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+  }
+
+  :global(.ct--question) .ct__options {
+    margin-top: clamp(1.5rem, 4.5dvh, 3rem);
+  }
+
+  /* Resposta: prazos riscados ------------------------------------------------- */
+  .ct__pill s {
+    position: relative;
+    text-decoration: none;
+  }
+
+  .ct__pill s span {
+    opacity: 0.5;
+  }
+
+  .ct__pill s::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: -0.3em;
+    right: -0.3em;
+    height: 2px;
+    margin-top: -1px;
+    background: var(--c-fg);
+    transform-origin: left center;
+  }
+
+  .ct__zero {
+    display: flex;
+    align-items: center;
+    gap: clamp(1rem, calc(var(--u) * 2), 2.5rem);
+    margin-top: clamp(1rem, 3dvh, 2rem);
+  }
+
+  .ct__num {
+    font-family: var(--font-display), 'Arial Black', sans-serif;
+    font-size: clamp(6rem, 34vw, 9rem);
+    font-variant-numeric: tabular-nums;
+    line-height: 0.85;
+    letter-spacing: -0.05em;
+  }
+
+  .ct__unit {
+    max-width: 7em;
+    font-family: var(--font-display), 'Arial Black', sans-serif;
+    font-size: var(--fs-h2);
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+  }
+
+  .ct__statement {
+    margin-top: clamp(1.25rem, 4dvh, 2.5rem);
+  }
+
+  .ct__note {
+    margin-top: clamp(1rem, 3dvh, 1.75rem);
+  }
+
+  /* Momentos ------------------------------------------------------------------- */
+  /* Pergunta: os prazos sobem um a um */
+  :global(.slide.is-active.ct--question) .ct__pill {
+    animation: pr-rise 0.5s var(--ease) calc(0.45s + var(--k) * 0.12s) both;
+  }
+
+  /* Resposta: um risco por prazo; o número conta de 24 até 0 logo depois (countUp) */
+  :global(.slide.is-active.ct--answer) .ct__pill s::after {
+    animation: pr-grow-x var(--m-fast) var(--ease) calc(0.3s + var(--k) * 0.15s) both;
+  }
+
+  :global(.slide.is-active.ct--answer) .ct__pill s span {
+    animation: ct-dim var(--m-fast) var(--ease) calc(0.3s + var(--k) * 0.15s) both;
+  }
+
+  @keyframes ct-dim {
+    from {
+      opacity: 1;
+    }
+  }
+
+  @media (min-width: 60rem) and (min-aspect-ratio: 1/1) {
+    .ct__title {
+      max-width: 11em;
+      font-size: calc(var(--fs-display) * 1.35);
+    }
+
+    .ct__options {
+      gap: calc(var(--u) * 0.8);
+    }
+
+    .ct__pill {
+      font-size: clamp(0.875rem, calc(var(--u) * 1.15), 1.5rem);
+    }
+
+    .ct__num {
+      font-size: calc(var(--fs-display) * 2.4);
+    }
+
+    .ct__unit {
+      font-size: calc(var(--fs-h2) * 1.1);
+    }
+
+    .ct__statement {
+      font-size: calc(var(--fs-h2) * 1.05);
+    }
+  }
+</style>

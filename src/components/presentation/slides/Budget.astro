@@ -1,0 +1,228 @@
+---
+/**
+ * Mensalidade + verba de anúncios: duas origens que se ligam a um único resultado.
+ * Desktop: fluxo da esquerda para a direita. Celular: origens lado a lado, destino embaixo.
+ * As linhas de ligação usam viewBox na mesma proporção da área (em --u), sem distorcer o traço.
+ */
+import Slide from '../Slide.astro';
+import { BUDGET } from '../../../data/presentation';
+---
+
+<Slide id="verba">
+  <h2 class="pr-title bg__title" data-reveal="title" set:html={BUDGET.title} />
+
+  <div class="bg">
+    {
+      BUDGET.sources.map((source) => (
+        <div class="bg__src" data-reveal>
+          <p class="pr-mono bg__label">{source.label}</p>
+          <p class="bg__name">{source.name}</p>
+          <p class="pr-text bg__text">{source.text}</p>
+        </div>
+      ))
+    }
+
+    <div class="bg__links" aria-hidden="true">
+      <svg class="bg__svg bg__svg--x" viewBox="0 0 130 200" preserveAspectRatio="none">
+        <circle cx="3" cy="50" r="3"></circle>
+        <circle cx="3" cy="150" r="3"></circle>
+        <path d="M3 50C72 50 58 100 130 100" pathLength="100"></path>
+        <path d="M3 150C72 150 58 100 130 100" pathLength="100"></path>
+      </svg>
+      <svg class="bg__svg bg__svg--y" viewBox="0 0 360 56">
+        <circle cx="90" cy="3" r="3"></circle>
+        <circle cx="270" cy="3" r="3"></circle>
+        <path d="M90 3C90 34 180 22 180 56" pathLength="100"></path>
+        <path d="M270 3C270 34 180 22 180 56" pathLength="100"></path>
+      </svg>
+    </div>
+
+    <p class="bg__dest">{BUDGET.result}</p>
+
+    <p class="pr-mono bg__seal" data-reveal>{BUDGET.seal}</p>
+  </div>
+
+  <p class="pr-statement bg__statement" data-reveal>
+    {BUDGET.statement.map((line) => <span>{line}</span>)}
+  </p>
+</Slide>
+
+<style>
+  .bg {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 var(--gap);
+    margin-top: clamp(1.5rem, 4.5dvh, 2.5rem);
+  }
+
+  .bg__src {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .bg__label {
+    color: var(--c-fg-2);
+  }
+
+  .bg__name {
+    font-family: var(--font-display), 'Arial Black', sans-serif;
+    font-size: clamp(1.375rem, 6.4vw, 2rem);
+    line-height: 1;
+    letter-spacing: -0.03em;
+  }
+
+  .bg__text {
+    font-size: var(--fs-small);
+  }
+
+  .bg__links {
+    grid-column: 1 / -1;
+  }
+
+  .bg__svg {
+    display: block;
+    width: 100%;
+    fill: none;
+    stroke: var(--c-fg);
+    stroke-width: 1.2;
+    stroke-linecap: butt;
+    overflow: visible;
+  }
+
+  .bg__svg circle {
+    fill: var(--c-fg);
+    stroke: none;
+  }
+
+  .bg__svg path {
+    stroke-dasharray: 100;
+  }
+
+  .bg__svg--x {
+    display: none;
+  }
+
+  /* O único bloco invertido do slide */
+  .bg__dest {
+    grid-column: 1 / -1;
+    align-self: center;
+    padding: 1.1em 1.2em;
+    border-radius: 10px;
+    background: var(--c-fg);
+    color: var(--c-bg);
+    font-family: var(--font-display), 'Arial Black', sans-serif;
+    font-size: var(--fs-h2);
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    text-align: center;
+    text-wrap: balance;
+  }
+
+  .bg__seal {
+    grid-column: 1 / -1;
+    justify-self: start;
+    max-width: 30em;
+    margin-top: 1.25rem;
+    padding: 0.75em 1em 0.7em;
+    border: 1px solid var(--c-rule);
+    border-radius: 6px;
+    color: var(--c-fg-2);
+    letter-spacing: 0.1em;
+    line-height: 1.55;
+  }
+
+  .bg__statement {
+    margin-top: clamp(1.5rem, 4dvh, 2.5rem);
+    padding-top: clamp(1rem, 2.6dvh, 1.5rem);
+    border-top: 1px solid var(--c-rule);
+  }
+
+  /* Momento: as linhas se desenham até o destino; quando chegam, o destino aparece */
+  :global(.slide.is-active) .bg__svg path {
+    animation: pr-draw 0.8s var(--ease) 0.35s both;
+  }
+
+  :global(.slide.is-active) .bg__svg path + path {
+    animation-delay: 0.5s;
+  }
+
+  :global(.slide.is-active) .bg__svg circle {
+    animation: pr-fade var(--m-fast) var(--ease) 0.3s both;
+  }
+
+  :global(.slide.is-active) .bg__dest {
+    animation: bg-arrive 0.35s var(--ease) 1.22s both;
+  }
+
+  @keyframes bg-arrive {
+    from {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+  }
+
+  /* Desktop: origens empilhadas à esquerda, linhas no meio, destino à direita.
+     Linhas com altura fixa em --u: a área das linhas tem sempre a proporção do viewBox. */
+  @media (min-width: 60rem) and (min-aspect-ratio: 1/1) {
+    .bg {
+      --row: calc(var(--u) * 10);
+      /* texto | respiro | linhas (encostam no destino) | destino */
+      grid-template-columns: max-content calc(var(--gap) * 0.9) calc(var(--u) * 13) minmax(0, 1fr);
+      grid-template-rows: repeat(2, minmax(var(--row), 1fr)) auto;
+      column-gap: 0;
+      margin-block: auto;
+      padding-block: calc(var(--u) * 1.5);
+    }
+
+    .bg__src {
+      grid-column: 1;
+      grid-row: 1;
+      justify-content: center;
+      gap: calc(var(--u) * 0.55);
+    }
+
+    .bg__src + .bg__src {
+      grid-row: 2;
+    }
+
+    .bg__name {
+      font-size: calc(var(--fs-h1) * 0.8);
+    }
+
+    .bg__links {
+      position: relative;
+      grid-column: 3;
+      grid-row: 1 / 3;
+    }
+
+    .bg__svg--x {
+      position: absolute;
+      inset: 0;
+      display: block;
+      height: 100%;
+    }
+
+    .bg__svg--y {
+      display: none;
+    }
+
+    .bg__dest {
+      grid-column: 4;
+      grid-row: 1 / 3;
+      padding: 0.55em 0.6em 0.6em;
+      font-size: var(--fs-h1);
+      text-align: left;
+    }
+
+    .bg__seal {
+      grid-column: 1;
+      grid-row: 3;
+      margin-top: calc(var(--u) * 0.6);
+    }
+
+    .bg__statement {
+      margin-top: 0;
+    }
+  }
+</style>

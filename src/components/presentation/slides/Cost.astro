@@ -10,9 +10,9 @@ import { COST } from '../../../data/presentation';
 
     <ol class="cs__list">
       {
-        COST.items.map((item) => (
+        COST.items.map((item, k) => (
           <li class="cs__item" data-reveal>
-            <div class="cs__photo">
+            <div class="cs__photo" style={`--k:${k}`}>
               <Picture
                 src={item.photo}
                 alt={item.alt}
@@ -77,6 +77,15 @@ import { COST } from '../../../data/presentation';
     height: 100%;
     object-fit: cover;
     filter: grayscale(1) contrast(1.06);
+  }
+
+  /* Momento: as três fotos se revelam da esquerda para a direita; a conclusão entra por último */
+  :global(.slide.is-active) .cs__photo {
+    animation: pr-wipe-right var(--m-base) var(--ease) calc(0.3s + var(--k) * 0.15s) both;
+  }
+
+  :global(.slide.is-active) .cs__statement {
+    transition-delay: 1.05s;
   }
 
   .cs__copy {

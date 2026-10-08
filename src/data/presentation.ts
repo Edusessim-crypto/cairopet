@@ -1,8 +1,10 @@
 /**
  * Apresentação comercial (/apresentacao).
  *
- * Copy transcrita do PPT oficial "CairoPet_Apresentacao_Comercial.pptx" (10 slides),
- * na mesma ordem. Não reescrever nem resumir: mudança de texto só com aprovação.
+ * Slides 01–04: copy transcrita do PPT oficial. v2 (08/10/2026, aprovada pelo Eduardo):
+ * saem Diagnóstico, Entrega, Método, Implementação e Dia a dia; entram investimento,
+ * contrato sem fidelidade, um slide por plano, comparativo com o mercado, próximos 15 dias
+ * e fechamento. Não reescrever nem resumir: mudança de texto só com aprovação.
  * Fotos recortadas do próprio PPT (src/assets/presentation).
  *
  * Títulos aceitam <em> (palavra em cinza, como no PPT) e são renderizados com set:html.
@@ -14,21 +16,27 @@ import custoCliente from '../assets/presentation/custo-cliente.jpg';
 import custoInstagram from '../assets/presentation/custo-instagram.jpg';
 import custoRua from '../assets/presentation/custo-rua.jpg';
 
-/** Rótulo de seção de cada slide ("02 • EXPERIÊNCIA"), na ordem do PPT. */
+/** Ordem dos slides e rótulo de seção ("02 • EXPERIÊNCIA"). Contador, rótulo e ?slide=N saem daqui. */
 export const SLIDES = [
   { id: 'capa', label: 'Capa' },
   { id: 'experiencia', label: 'Experiência' },
   { id: 'fundadores', label: 'Os fundadores' },
-  { id: 'diagnostico', label: 'Diagnóstico' },
   { id: 'custo', label: 'O custo' },
-  { id: 'entrega', label: 'Entrega' },
-  { id: 'metodo', label: 'O método' },
-  { id: 'implementacao', label: 'Implementação' },
-  { id: 'dia-a-dia', label: 'O dia a dia' },
+  { id: 'verba', label: 'Seu investimento' },
+  { id: 'contrato', label: 'Contrato' },
+  { id: 'fidelidade', label: 'Contrato' },
+  { id: 'plano-presenca', label: 'Planos' },
+  { id: 'plano-crescimento', label: 'Planos' },
+  { id: 'plano-performance', label: 'Planos' },
+  { id: 'mercado', label: 'Comparativo' },
   { id: 'investimento', label: 'Investimento' },
+  { id: 'proximos-dias', label: 'Próximos passos' },
+  { id: 'fechamento', label: 'Fechamento' },
 ] as const;
 
 export type SlideId = (typeof SLIDES)[number]['id'];
+
+export const brl = (n: number) => n.toLocaleString('pt-BR');
 
 // 01 ---------------------------------------------------------------------------
 export const COVER = {
@@ -42,12 +50,19 @@ export const COVER = {
 };
 
 // 02 ---------------------------------------------------------------------------
-export const EXPERIENCE = {
+interface Stat {
+  value: string;
+  text: string;
+  /** Número que conta ao entrar no slide: {prefix}{to}{suffix}. */
+  count?: { prefix?: string; to: number; suffix?: string };
+}
+
+export const EXPERIENCE: { title: string; stats: Stat[] } = {
   title: 'Experiência em <em>números</em>.',
   stats: [
-    { value: '+300', text: 'empresas atendidas' },
+    { value: '+300', count: { prefix: '+', to: 300 }, text: 'empresas atendidas' },
     { value: 'Desde 2018', text: 'trabalhando com tráfego, marketing, conteúdo e estratégias para aumentar vendas.' },
-    { value: '+8 anos', text: 'no mercado' },
+    { value: '+8 anos', count: { prefix: '+', to: 8, suffix: ' anos' }, text: 'no mercado' },
     { value: '+R$1 milhão', text: 'em anúncios gerenciados' },
   ],
 };
@@ -68,23 +83,6 @@ export const FOUNDERS = {
 };
 
 // 04 ---------------------------------------------------------------------------
-export const DIAGNOSIS = {
-  title: 'Vamos olhar para a SUA&nbsp;EMPRESA <em>agora</em>.',
-  text: 'Vamos marcar e analisar juntos o que acontece com sua empresa hoje.',
-  items: [
-    'Pouco movimento',
-    'Poucos clientes novos',
-    'Instagram parado',
-    'Marketing sem resultado',
-    'Produtos encalhados',
-    'Promoções com pouca repercussão',
-    'Concorrência aparecendo mais',
-    'Poucas mensagens e pedidos de orçamento',
-    'Quero crescer, mas não sei como estruturar o marketing',
-  ],
-};
-
-// 05 ---------------------------------------------------------------------------
 export const COST = {
   title: 'O que um marketing parado <em>custa</em>.',
   items: [
@@ -110,88 +108,37 @@ export const COST = {
   statement: ['Não é sobre ter um Instagram.', 'É sobre fazer sua agropecuária ser lembrada, escolhida e vender.'],
 };
 
-// 06 ---------------------------------------------------------------------------
-export const DELIVERABLES = {
-  title: 'O que você <em>recebe</em>.',
-  items: [
-    { title: 'Estratégia', text: 'Planejamento de marketing pensado para a realidade, objetivos e momento da sua agropecuária.' },
-    { title: 'Conteúdo', text: 'Criativos, copies e conteúdos feitos para chamar atenção, gerar desejo e levar o cliente até a loja.' },
-    { title: 'Tráfego pago', text: 'Anúncios para colocar sua agropecuária na frente de quem realmente pode comprar na sua região.' },
-    { title: 'Campanhas', text: 'Ações comerciais para datas, produtos, oportunidades e momentos estratégicos de venda.' },
-    { title: 'Ofertas', text: 'Construção e comunicação de ofertas que dão ao cliente um motivo real para comprar agora.' },
-    { title: 'Otimização', text: 'Acompanhamento do que funciona para ajustar campanhas, conteúdos e decisões com base em resultado.' },
+// 05 ---------------------------------------------------------------------------
+/** Mensalidade + verba de anúncios. Não citar valor mínimo de verba. */
+export const BUDGET = {
+  title: 'Duas partes. <em>Um resultado.</em>',
+  sources: [
+    { label: 'Mensalidade CairoPet', name: 'Estratégia', text: 'O time que planeja, cria e ajusta toda semana.' },
+    { label: 'Verba de anúncios', name: 'Alcance', text: 'Vai direto para Meta e Google, no cartão da sua loja.' },
   ],
-  statement: ['Não entregamos “posts”.', 'Construímos um marketing pensado para fazer sua agropecuária vender.'],
+  seal: '100% da verba vira anúncio. A gente não toca nesse dinheiro.',
+  result: 'Cliente novo no balcão.',
+  statement: ['Anúncio sem estratégia queima dinheiro.', 'Estratégia sem anúncio ninguém vê.'],
+};
+
+// 06 ---------------------------------------------------------------------------
+export const CONTRACT = {
+  kicker: 'A pergunta que todo lojista faz:',
+  title: 'Quanto tempo eu fico <em>preso</em>?',
+  options: ['6 meses', '12 meses', '24 meses'],
 };
 
 // 07 ---------------------------------------------------------------------------
-export const METHOD = {
-  title: 'Como <em>será feito</em>.',
-  text: 'Do diagnóstico à agropecuária vendendo com estratégia.',
-  steps: [
-    {
-      title: 'Diagnóstico',
-      text: 'Primeiro, entendemos a sua agropecuária, a sua cidade, o seu momento e os seus objetivos. O que você vende, para quem vende, como vende hoje e onde estão os gargalos.',
-    },
-    {
-      title: 'Estratégia',
-      text: 'Com isso, definimos o plano: posicionamento, linha de comunicação, ofertas, campanhas e o caminho certo para transformar marketing em venda.',
-    },
-    {
-      title: 'Produção',
-      text: 'Aqui entra a execução: conteúdos, criativos, copies, campanhas e materiais pensados para chamar atenção, gerar desejo e levar o cliente até a sua loja.',
-    },
-    {
-      title: 'Tráfego e campanhas',
-      text: 'Colocamos sua agropecuária na frente das pessoas certas, na sua região, com anúncios e ações comerciais voltadas para gerar alcance, movimento e oportunidade de venda.',
-    },
-    {
-      title: 'Otimização contínua',
-      text: 'Acompanhamos o que performa, ajustamos o que for preciso e evoluímos a estratégia com base em resultado — para o marketing não ficar parado e a operação continuar girando.',
-    },
-  ],
+export const NO_LOCK_IN = {
+  /** Conta de `from` até `value` ao entrar no slide. */
+  value: 0,
+  from: 24,
+  label: 'meses de fidelidade',
+  statement: ['Quem fica com a CairoPet fica pelo resultado.', 'Ele prende muito mais do que qualquer contrato.'],
+  note: 'Quer sair? Avise com 30 dias. Simples assim.',
 };
 
-// 08 ---------------------------------------------------------------------------
-export const IMPLEMENTATION = {
-  title: 'Sua agropecuária com o marketing rodando em <em>7 dias úteis</em>.',
-  text: 'Do diagnóstico à primeira campanha no ar.',
-  days: 7,
-  milestones: [
-    { day: 1, title: 'Diagnóstico e direcionamento definidos', text: 'Entendemos sua loja, região, público, produtos e objetivos.' },
-    { day: 3, title: 'Estratégia e plano de ação prontos', text: 'Definimos posicionamento, comunicação, conteúdos, ofertas e campanhas prioritárias.' },
-    { day: 5, title: 'Primeiros conteúdos e campanhas para aprovação', text: 'Criativos, copies e estrutura de anúncios preparados para começar.' },
-    { day: 7, title: 'Operação no ar', text: 'Conteúdo organizado, campanhas ativas e sua agropecuária começando a aparecer para quem realmente pode comprar.' },
-  ],
-  note: [
-    'O prazo começa após o recebimento dos acessos, informações e materiais necessários.',
-    'A partir daí, a CairoPet assume a estratégia, produção e implantação para colocar sua operação de marketing para rodar.',
-  ],
-};
-
-// 09 ---------------------------------------------------------------------------
-export const DAY_TO_DAY = {
-  title: 'Depois que você <em>fecha</em>.',
-  steps: [
-    { title: 'Contrato e pagamento', text: 'Formalizamos a parceria e liberamos o início da operação.' },
-    { title: 'Grupo no WhatsApp', text: 'Criamos um canal direto com a CairoPet para alinhamentos, aprovações e acompanhamento do projeto.' },
-    {
-      title: 'Briefing e acessos',
-      text: 'Você envia as informações da agropecuária, materiais, redes sociais e acessos necessários. É aqui que começamos a mergulhar no negócio.',
-    },
-    { title: 'Estratégia inicial', text: 'Definimos posicionamento, comunicação, campanhas, ofertas e prioridades para os primeiros conteúdos.' },
-    {
-      title: 'Produção e ativação',
-      text: 'Criamos os primeiros conteúdos, anúncios e campanhas. Após a aprovação, colocamos a operação para rodar.',
-    },
-    {
-      title: 'Rotina e otimização',
-      text: 'A partir daí, entramos no ciclo contínuo de produção, campanhas, acompanhamento de resultados e ajustes estratégicos.',
-    },
-  ],
-};
-
-// 10 ---------------------------------------------------------------------------
+// 08–10 e 12 -------------------------------------------------------------------
 /**
  * Planos (reformulados em 01/10/2026 a pedido do usuário — preços do PPT).
  *
@@ -201,7 +148,9 @@ export const DAY_TO_DAY = {
  * não soma. Ex.: Google Meu Negócio: atualização inicial → reestruturação → gestão contínua.
  * Pilar que evolui sem `activities` herda as atividades da versão anterior.
  *
- * Card: só os pilares do plano ("Tudo do <anterior>, mais:").
+ * Slides 08–10 (um por plano, sem preço): promessa, perfil e 4 destaques; os demais
+ * pilares viram "Também inclui".
+ * Slide 12, card: só os pilares do plano ("Tudo do <anterior>, mais:").
  * "Ver tudo o que está incluso": a soma consolidada, com todas as atividades.
  */
 export interface Pillar {
@@ -226,6 +175,21 @@ export interface Plan {
   /** Plano anterior: "Tudo do <plano>, mais:" */
   extends?: string;
   pillars: Pillar[];
+  /** A promessa do plano, numa frase. */
+  promise: string;
+  /** "Ideal se: …" */
+  fit: string;
+  /** Exatamente 4. `pillar` = key de um pilar; `from` = valor no plano anterior (conta até `value`). */
+  highlights: Highlight[];
+  /** Total mensal de contratar por fora (slide 11). Tem que bater com MARKET. */
+  market: { monthly: string };
+}
+
+export interface Highlight {
+  pillar: string;
+  value: string;
+  label: string;
+  from?: number;
 }
 
 const CONTEUDO = [
@@ -250,7 +214,7 @@ const ESTRUTURA = [
 ];
 
 export const PLANS: { title: string; more: string; plans: Plan[] } = {
-  title: 'Escolha o seu <em>plano</em>.',
+  title: 'Tudo isso, <em>num time só</em>.',
   more: 'Ver tudo o que está incluso',
   plans: [
     {
@@ -260,6 +224,15 @@ export const PLANS: { title: string; more: string; plans: Plan[] } = {
       role: 'A base da operação de marketing.',
       price: '597',
       period: '/mês',
+      promise: 'Sua loja aparecendo, toda semana, para quem mora perto.',
+      fit: 'Ideal se: você ainda não anuncia ou posta sem frequência.',
+      highlights: [
+        { pillar: 'conteudo', value: '4', label: 'criativos por mês' },
+        { pillar: 'trafego', value: 'Local', label: 'anúncio só para quem mora perto da loja' },
+        { pillar: 'gmn', value: 'Google', label: 'perfil da loja revisado e atualizado' },
+        { pillar: 'relatorio', value: 'Semanal', label: 'relatório em linguagem simples' },
+      ],
+      market: { monthly: '3.000' },
       pillars: [
         {
           key: 'trafego',
@@ -333,6 +306,15 @@ export const PLANS: { title: string; more: string; plans: Plan[] } = {
       period: '/mês',
       badge: 'Mais escolhido',
       extends: 'presenca',
+      promise: 'Ofertas que tiram o cliente de casa e trazem até o balcão.',
+      fit: 'Ideal se: você já posta, mas as promoções não geram movimento.',
+      highlights: [
+        { pillar: 'conteudo', value: '6', from: 4, label: 'criativos por mês' },
+        { pillar: 'estrutura', value: 'Página', label: 'própria para as suas campanhas' },
+        { pillar: 'ofertas', value: 'Ofertas', label: 'com motivo real para comprar agora' },
+        { pillar: 'scripts', value: 'WhatsApp', label: 'scripts para a equipe fechar mais' },
+      ],
+      market: { monthly: '4.000' },
       pillars: [
         {
           key: 'estrutura',
@@ -391,6 +373,15 @@ export const PLANS: { title: string; more: string; plans: Plan[] } = {
       price: '1.997',
       period: '/mês',
       extends: 'crescimento',
+      promise: 'Marketing e atendimento trabalhando juntos para vender mais.',
+      fit: 'Ideal se: você tem equipe no atendimento e quer crescer com controle.',
+      highlights: [
+        { pillar: 'conteudo', value: '8', from: 6, label: 'criativos por mês' },
+        { pillar: 'estrutura', value: 'Site', label: 'institucional da loja, ligado às campanhas' },
+        { pillar: 'atendimento', value: 'Leads', label: 'análise das conversas: onde o cliente se perde' },
+        { pillar: 'consultoria', value: '2×', label: 'consultorias comerciais por mês' },
+      ],
+      market: { monthly: '5.500' },
       pillars: [
         {
           key: 'otimizacao',
@@ -475,3 +466,76 @@ export function planSections(plan: Plan): { plan: Plan; pillars: IncludedPillar[
     pillars: level.pillars.filter((p) => latest.get(p.key)?.from === level.id).map((p) => latest.get(p.key)!.pillar),
   }));
 }
+
+// 11 ---------------------------------------------------------------------------
+/**
+ * Quanto custaria montar o mesmo time "por fora" (totais calculados no componente).
+ * Fontes:
+ * - Gestor de tráfego: agência, conta pequena, R$ 2.000–4.000/mês; freelancer pleno,
+ *   R$ 1.500–2.500/mês (Trafius, "Preço de gestor de tráfego em 2026").
+ * - Social media: 20% cobram R$ 1.000–1.500 por 12 posts/mês; exemplo de pacote completo
+ *   a R$ 2.500/mês (mLabs, Panorama Profissionais de Social Media).
+ * - Landing page: freelancer intermediário R$ 900–2.500; agência pequena R$ 2.500–8.000 (Wix Blog).
+ * - Site sob medida: de R$ 2.000 a R$ 50.000 (Locaweb, 2026).
+ */
+export const MARKET = {
+  title: 'Montar esse time <em>por fora</em> custaria:',
+  text: 'Gestor de tráfego, social media e estrutura digital, cada um contratado separado.',
+  /** Por plano: blocos mensais de baixo para cima e o pagamento único, se houver. */
+  plans: [
+    {
+      plan: 'presenca',
+      monthly: [
+        { name: 'Gestor de tráfego', value: 2000 },
+        { name: 'Social media', value: 1000 },
+      ],
+    },
+    {
+      plan: 'crescimento',
+      monthly: [
+        { name: 'Gestor de tráfego', value: 2500 },
+        { name: 'Social media', value: 1500 },
+      ],
+      once: { name: 'landing page', value: 2500 },
+    },
+    {
+      plan: 'performance',
+      monthly: [
+        { name: 'Gestor de tráfego pleno', value: 3500 },
+        { name: 'Social media', value: 2000 },
+      ],
+      once: { name: 'site institucional', value: 5000 },
+    },
+  ] as { plan: string; monthly: { name: string; value: number }[]; once?: { name: string; value: number } }[],
+  statement: 'E você ainda viraria o gerente de três fornecedores.',
+  note: 'Valores de agências e profissionais plenos no Brasil (Trafius, mLabs, Wix, Locaweb). Sem contar Google Meu Negócio, consultorias, scripts e relatórios.',
+};
+
+// 13 ---------------------------------------------------------------------------
+export const NEXT_DAYS = {
+  title: 'Do sim à primeira otimização em <em>15 dias</em>.',
+  text: 'Você entra em 3 momentos. O resto é com a gente.',
+  who: { voce: 'Você', cairopet: 'CairoPet' },
+  milestones: [
+    { day: 0, who: 'voce', title: 'Você diz sim', text: 'Contrato, pagamento e grupo no WhatsApp.' },
+    { day: 1, who: 'voce', title: 'Você envia os acessos', text: 'Redes sociais e informações da loja.' },
+    { day: 3, who: 'cairopet', title: 'Estratégia pronta', text: 'Ofertas e campanhas prioritárias definidas.' },
+    { day: 5, who: 'voce', title: 'Você aprova', text: 'Os primeiros conteúdos, pelo grupo do WhatsApp.' },
+    { day: 7, who: 'cairopet', title: 'Operação no ar', text: 'Sua loja aparecendo para quem mora perto.' },
+    { day: 14, who: 'cairopet', title: 'Primeiro relatório', text: 'Os números da campanha, em linguagem simples.' },
+    { day: 15, who: 'cairopet', title: 'Primeira otimização', text: 'Reforço no que trouxe cliente, corte no que não trouxe.' },
+  ] as { day: number; who: 'voce' | 'cairopet'; title: string; text: string }[],
+  /** Dia que ganha o anel de destaque ao acender. */
+  live: 7,
+  note: 'Dias úteis, contados a partir do recebimento dos acessos.',
+};
+
+// 14 ---------------------------------------------------------------------------
+/** Só a exclusividade real (uma loja por cidade). Nada de "últimas vagas". */
+export const CLOSING = {
+  kicker: 'Exclusividade',
+  title: 'Uma agropecuária <em>por cidade</em>.',
+  text: 'Quando uma loja fecha com a CairoPet, a cidade fica com ela. A concorrência da região não entra.',
+  question: 'Vamos garantir a sua?',
+  photo: { src: capaCachorro, alt: '' },
+};

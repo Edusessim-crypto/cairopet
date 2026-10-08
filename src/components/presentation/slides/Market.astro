@@ -1,0 +1,384 @@
+---
+/**
+ * Âncora de valor antes do preço: quanto custaria montar o mesmo time por fora.
+ * Uma barra empilhada por plano (altura proporcional ao maior total); pagamento único
+ * fica num selo ao lado e não entra na altura. Totais calculados aqui (fontes em MARKET).
+ */
+import Slide from '../Slide.astro';
+import { MARKET, PLANS, brl } from '../../../data/presentation';
+
+const columns = MARKET.plans.map((entry) => {
+  const monthly = entry.monthly.reduce((sum, block) => sum + block.value, 0);
+  return {
+    ...entry,
+    name: PLANS.plans.find((p) => p.id === entry.plan)?.name ?? entry.plan,
+    total: monthly,
+    year: monthly * 12 + (entry.once?.value ?? 0),
+  };
+});
+const max = Math.max(...columns.map((c) => c.total));
+const legend = MARKET.plans[0].monthly.map((block) => block.name);
+
+// Coluna por coluna; a contagem acompanha a subida da barra
+const COL_DELAY_MS = 300;
+const COL_STEP_MS = 120;
+---
+
+<Slide id="mercado">
+  <div class="mk__head">
+    <h2 class="pr-title mk__title" data-reveal="title" set:html={MARKET.title} />
+    <p class="pr-lead mk__lead" data-reveal>{MARKET.text}</p>
+  </div>
+
+  <p class="pr-mono mk__legend" aria-hidden="true" data-reveal>
+    {legend.map((name) => <span class="mk__key">{name}</span>)}
+  </p>
+
+  <div class="mk">
+    {
+      columns.map((col, c) => (
+        <figure class="mk__col" style={`--c:${c};--h:${col.total / max}`}>
+          <div class="mk__plot">
+            <p class="mk__total">
+              R$ <span data-count={col.total} data-count-delay={COL_DELAY_MS + c * COL_STEP_MS}>{brl(col.total)}</span><span class="mk__per">/mês</span>
+            </p>
+            <ul class="mk__bar">
+              {col.monthly.map((block, b) => (
+                <li class="mk__block" style={`--v:${block.value};--b:${b}`}>
+                  <span class="mk__bname">{block.name}</span>
+                  <span class="mk__bval">R$ {brl(block.value)}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <figcaption class="mk__caption">
+            <span class="mk__name">{col.name}</span>
+            <span class="pr-mono mk__year">
+              1º ano: R$ <span data-count={col.year} data-count-delay={COL_DELAY_MS + c * COL_STEP_MS}>{brl(col.year)}</span>
+            </span>
+          </figcaption>
+          {col.once && (
+            <p class="pr-mono mk__once">
+              + R$ {brl(col.once.value)} · {col.once.name}, pagamento único
+            </p>
+          )}
+        </figure>
+      ))
+    }
+  </div>
+
+  <div class="mk__foot">
+    <p class="pr-statement mk__statement" data-reveal>{MARKET.statement}</p>
+    <p class="mk__note" data-reveal>{MARKET.note}</p>
+  </div>
+</Slide>
+
+<style>
+  .mk__head {
+    display: flex;
+    flex-direction: column;
+    gap: 0.7em;
+  }
+
+  .mk__legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 1.25rem;
+    margin-top: 1.5rem;
+    color: var(--c-fg-2);
+  }
+
+  .mk__key {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6em;
+  }
+
+  .mk__key::before {
+    content: '';
+    width: 0.9em;
+    height: 0.9em;
+    border-radius: 2px;
+    background: var(--mk-tone);
+  }
+
+  /* Tons da pilha: de baixo (mais claro) para cima (mais escuro) */
+  .mk__key,
+  .mk__block {
+    --mk-tone: rgb(255 255 255 / 0.8);
+    --mk-ink: var(--ink);
+  }
+
+  .mk__key + .mk__key,
+  .mk__block + .mk__block {
+    --mk-tone: rgb(255 255 255 / 0.24);
+    --mk-ink: var(--white);
+  }
+
+  .mk {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin-top: 1rem;
+  }
+
+  .mk__col {
+    --reserve: 2.75rem;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    margin: 0;
+  }
+
+  .mk__plot {
+    --bar: calc((100% - var(--reserve)) * var(--h));
+    --bar-w: 100%;
+    position: relative;
+    height: 17rem;
+  }
+
+  .mk__total {
+    position: absolute;
+    left: 0;
+    bottom: calc(var(--bar) + 0.45rem);
+    font-family: var(--font-display), 'Arial Black', sans-serif;
+    font-size: clamp(0.95rem, 4.4vw, 1.25rem);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+  }
+
+  .mk__per {
+    color: var(--c-fg-2);
+    font-family: var(--font-body), system-ui, sans-serif;
+    font-size: 0.55em;
+    font-weight: 500;
+    letter-spacing: 0;
+  }
+
+  .mk__bar {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 2px;
+    width: var(--bar-w);
+    height: var(--bar);
+    overflow: hidden;
+    border-radius: 6px 6px 0 0;
+  }
+
+  .mk__block {
+    position: relative;
+    display: flex;
+    flex: var(--v) 1 0;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    justify-content: space-between;
+    gap: 0 0.5em;
+    min-height: 0;
+    padding: 0.45em 0.6em;
+    color: var(--mk-ink);
+    font-size: 0.75rem;
+    line-height: 1.25;
+  }
+
+  .mk__block::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--mk-tone);
+    transform-origin: bottom;
+  }
+
+  .mk__block span {
+    position: relative;
+  }
+
+  .mk__bname {
+    font-weight: 600;
+  }
+
+  .mk__bval {
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .mk__once {
+    margin-top: 0.75rem;
+    color: var(--c-fg-2);
+    font-size: max(0.625rem, calc(var(--fs-mono) * 0.92));
+    letter-spacing: 0.08em;
+    line-height: 1.5;
+  }
+
+  .mk__caption {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3em;
+    padding-top: 0.65rem;
+    border-top: 1px solid var(--c-rule);
+  }
+
+  .mk__name {
+    font-family: var(--font-display), 'Arial Black', sans-serif;
+    font-size: clamp(0.875rem, 3.9vw, 1.0625rem);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+  }
+
+  .mk__year {
+    color: var(--c-fg-2);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.06em;
+  }
+
+  .mk__foot {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    margin-top: clamp(1.5rem, 4dvh, 2.5rem);
+  }
+
+  .mk__statement {
+    color: var(--c-em);
+  }
+
+  .mk__note {
+    color: var(--c-fg-2);
+    font-size: calc(var(--fs-small) * 0.88);
+    line-height: 1.45;
+    text-wrap: pretty;
+  }
+
+  /* Celular: o nome do serviço sai da barra (fica na legenda) */
+  @media (max-width: 59.99rem), (max-aspect-ratio: 1/1) {
+    .mk__bname {
+      position: absolute !important;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+    }
+  }
+
+  /* Momento: blocos sobem de baixo para cima, coluna por coluna; totais contam junto */
+  :global(.slide.is-active) .mk__block::before {
+    animation: pr-grow-y 0.45s var(--ease) calc(0.3s + var(--c) * 0.12s + var(--b) * 0.32s) both;
+  }
+
+  :global(.slide.is-active) .mk__block span {
+    animation: pr-fade var(--m-fast) var(--ease) calc(0.55s + var(--c) * 0.12s + var(--b) * 0.32s) both;
+  }
+
+  :global(.slide.is-active) .mk__total,
+  :global(.slide.is-active) .mk__caption {
+    animation: pr-fade var(--m-fast) var(--ease) calc(0.3s + var(--c) * 0.12s) both;
+  }
+
+  :global(.slide.is-active) .mk__once {
+    animation: pr-fade var(--m-fast) var(--ease) calc(1s + var(--c) * 0.12s) both;
+  }
+
+  :global(.slide.is-active) .mk__statement {
+    transition-delay: 1.35s;
+  }
+
+  :global(.slide.is-active) .mk__note {
+    transition-delay: 1.45s;
+  }
+
+  @media (min-width: 60rem) and (min-aspect-ratio: 1/1) {
+    .mk__head {
+      flex-direction: row;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: calc(var(--gap) * 2);
+    }
+
+    .mk__title {
+      max-width: 11em;
+    }
+
+    .mk__lead {
+      flex: none;
+      max-width: 19em;
+      padding-bottom: 0.3em;
+      text-align: right;
+    }
+
+    .mk__legend {
+      display: none;
+    }
+
+    .mk {
+      flex: 1;
+      grid-template-rows: minmax(0, 1fr);
+      column-gap: calc(var(--gap) * 1.5);
+      min-height: 0;
+      margin-top: clamp(1rem, calc(var(--u) * 2.2), 3rem);
+    }
+
+    .mk__plot {
+      --bar-w: 56%;
+      flex: 1;
+      height: auto;
+      min-height: 0;
+    }
+
+    .mk__total {
+      font-size: var(--fs-h2);
+    }
+
+    .mk__block {
+      padding: 0.5em 0.7em;
+      font-size: calc(var(--fs-small) * 0.88);
+    }
+
+    /* Legenda da coluna com altura fixa: assim o selo (posicionado na coluna) sabe onde
+       fica o topo da barra, que é medida dentro do gráfico. */
+    .mk__col {
+      --cap: calc(var(--u) * 4.6);
+      --reserve: calc(var(--fs-h2) * 1.6);
+      position: relative;
+    }
+
+    .mk__caption {
+      height: var(--cap);
+      padding-top: calc(var(--u) * 0.9);
+    }
+
+    .mk__name {
+      font-size: var(--fs-h3);
+    }
+
+    .mk__once {
+      position: absolute;
+      top: calc(100% - var(--cap) - (100% - var(--cap) - var(--reserve)) * var(--h));
+      left: calc(56% + 0.9rem);
+      right: 0;
+      margin: 0;
+    }
+
+    .mk__foot {
+      flex-direction: row;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: calc(var(--gap) * 2);
+      margin-top: calc(var(--u) * 2.2);
+    }
+
+    .mk__statement {
+      font-size: calc(var(--fs-h2) * 0.9);
+    }
+
+    .mk__note {
+      flex: none;
+      max-width: 30em;
+      text-align: right;
+    }
+  }
+</style>

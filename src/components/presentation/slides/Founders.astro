@@ -83,6 +83,15 @@ const widths = (w: number) => [360, 540, 720].filter((x) => x < w).concat(w);
     object-fit: cover;
   }
 
+  /* Momento: as fotos se revelam de baixo para cima, uma depois da outra */
+  :global(.slide.is-active) .fd__photo {
+    animation: pr-wipe-up 0.8s var(--ease) 0.3s both;
+  }
+
+  :global(.slide.is-active) .fd__person + .fd__person .fd__photo {
+    animation-delay: 0.42s;
+  }
+
   .fd__person figcaption {
     display: flex;
     flex-direction: column;

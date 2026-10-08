@@ -3,6 +3,7 @@
  * Planos (preços do PPT; pilares em src/data/presentation.ts). Desktop: três colunas, o plano
  * "Mais escolhido" invertido (fundo branco). Celular: um plano por vez,
  * escolhido nos botões com o nome do plano.
+ * Vem logo depois do comparativo: o valor "por fora" aparece riscado acima do preço.
  */
 import Slide from '../Slide.astro';
 import CheckIcon from '../CheckIcon.astro';
@@ -10,6 +11,10 @@ import { PLANS } from '../../../data/presentation';
 
 const featured = PLANS.plans.find((p) => p.badge)?.id ?? PLANS.plans[0].id;
 const nameOf = (id?: string) => PLANS.plans.find((p) => p.id === id)?.name;
+const toNumber = (price: string) => Number(price.replace('.', ''));
+
+// O preço conta depois que o valor "por fora" é riscado
+const PRICE_DELAY_MS = 800;
 ---
 
 <Slide id="investimento">
@@ -32,11 +37,16 @@ const nameOf = (id?: string) => PLANS.plans.find((p) => p.id === id)?.name;
           <header class="pl__head">
             {plan.badge && <p class="pl__badge pr-mono">{plan.badge}</p>}
             <h3 class="pl__name">{plan.name}</h3>
+            <p class="pl__market">
+              <span class="visually-hidden">Contratando por fora: </span>
+              <s>R$ {plan.market.monthly}{plan.period} por fora</s>
+            </p>
             <p class="pl__price">
               <span class="pl__cur">R$</span>
-              <span class="pl__value">{plan.price}</span>
+              <span class="pl__value" data-count={toNumber(plan.price)} data-count-delay={PRICE_DELAY_MS}>{plan.price}</span>
               <span class="pl__period">{plan.period}</span>
             </p>
+            <p class="pr-pill pl__day">menos de R$ {Math.ceil(toNumber(plan.price) / 30)} por dia</p>
             <p class="pl__text">{plan.text}</p>
           </header>
 
@@ -147,16 +157,49 @@ const nameOf = (id?: string) => PLANS.plans.find((p) => p.id === id)?.name;
     text-transform: uppercase;
   }
 
+  .pl__market {
+    margin-top: 0.9em;
+    color: var(--c-fg-2);
+    font-size: var(--fs-small);
+    line-height: 1.3;
+  }
+
+  .pl__market s {
+    position: relative;
+    text-decoration: none;
+  }
+
+  .pl__market s::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: -0.15em;
+    right: -0.15em;
+    height: 1.5px;
+    margin-top: -0.75px;
+    background: currentColor;
+    transform-origin: left center;
+  }
+
   .pl__price {
     display: flex;
     align-items: baseline;
     gap: 0.12em;
-    margin-top: 0.45em;
+    margin-top: 0.2em;
     font-family: var(--font-display), 'Arial Black', sans-serif;
     font-size: var(--fs-price);
+    font-variant-numeric: tabular-nums;
     line-height: 1;
     letter-spacing: -0.045em;
     white-space: nowrap;
+  }
+
+  .pl__day {
+    align-self: flex-start;
+    margin-top: 0.9em;
+    padding: 0.5em 0.9em 0.45em;
+    font-size: max(0.625rem, calc(var(--fs-mono) * 0.92));
+    letter-spacing: 0.1em;
   }
 
   .pl__cur {
@@ -255,6 +298,26 @@ const nameOf = (id?: string) => PLANS.plans.find((p) => p.id === id)?.name;
     text-decoration-color: currentColor;
   }
 
+  /* Momento: o "por fora" é riscado e o preço conta (countUp); o Crescimento entra por último */
+  :global(.slide.is-active) .pl__market s::after {
+    animation: pr-grow-x var(--m-fast) var(--ease) 0.5s both;
+  }
+
+  /* O preço só aparece quando começa a contar (nunca "R$ 0/mês" parado na tela) */
+  :global(.slide.is-active) .pl__price {
+    animation: pr-fade var(--m-fast) var(--ease) 0.75s both;
+  }
+
+  :global(html.js) .pl__plan.is-featured[data-reveal] {
+    transform: translate3d(0, calc(var(--dir, 1) * 0.875rem), 0) scale(0.98);
+  }
+
+  /* 0,1 s depois do último card (Performance, 6º item com entrada no slide) */
+  :global(html.js .slide.is-active) .pl__plan.is-featured[data-reveal] {
+    transform: none;
+    transition-delay: calc(0.12s + 5 * 0.055s + 0.1s);
+  }
+
   /* Celular e tablet em pé: um plano por vez */
   @media (max-width: 59.99rem), (max-aspect-ratio: 1/1) {
     .pl__plan {
@@ -274,17 +337,53 @@ const nameOf = (id?: string) => PLANS.plans.find((p) => p.id === id)?.name;
       display: none;
     }
 
+    /* Espaços verticais em dvh: em 16:9 (mais baixo) o card aperta e cabe; em 16:10 respira */
+    .pl__title {
+      font-size: calc(var(--fs-h1) * 0.85);
+    }
+
     .pl {
       flex: 1;
       grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: calc(var(--gap) * 0.8);
       align-items: stretch;
       min-height: 0;
-      margin-top: clamp(1.25rem, calc(var(--u) * 2.2), 3rem);
+      margin-top: clamp(0.9rem, 2.4dvh, 3rem);
     }
 
     .pl__plan {
-      padding: clamp(1.1rem, calc(var(--u) * 1.8), 2.5rem) clamp(1.1rem, calc(var(--u) * 1.9), 2.75rem);
+      padding: clamp(0.9rem, 2.2dvh, 2.25rem) clamp(1.1rem, calc(var(--u) * 1.9), 2.75rem);
+    }
+
+    .pl__market {
+      margin-top: clamp(0.35rem, 1.1dvh, 0.9rem);
+    }
+
+    .pl__day {
+      margin-top: clamp(0.4rem, 1.2dvh, 0.9rem);
+    }
+
+    .pl__text {
+      margin-top: clamp(0.4rem, 1.2dvh, 1rem);
+    }
+
+    .pl__body {
+      margin-top: clamp(0.6rem, 1.6dvh, 1.5rem);
+      padding-top: clamp(0.6rem, 1.6dvh, 1.5rem);
+    }
+
+    .pl__extends {
+      margin-bottom: 0.7em;
+    }
+
+    .pl__items {
+      gap: clamp(0.25em, 0.75dvh, 0.55em);
+      line-height: 1.3;
+    }
+
+    .pl__more {
+      min-height: 2.25rem;
+      padding-top: clamp(0.4rem, 1.2dvh, 1.1em);
     }
 
     /* O selo não empurra o nome: os três planos ficam alinhados na mesma linha */

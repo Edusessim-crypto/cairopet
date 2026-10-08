@@ -27,7 +27,7 @@ const tagline = cut > 0 ? [COVER.tagline.slice(0, cut), COVER.tagline.slice(cut 
 
   <p class="cover__footer pr-mono" data-reveal>{COVER.footer}</p>
 
-  <div class="cover__photo" data-reveal>
+  <div class="cover__photo">
     <Picture
       src={COVER.photo.src}
       alt={COVER.photo.alt}
@@ -171,6 +171,22 @@ const tagline = cut > 0 ? [COVER.tagline.slice(0, cut), COVER.tagline.slice(cut 
   .cover__photo :global(img) {
     object-fit: cover;
     object-position: 74% 16%;
+  }
+
+  /* Momento: a foto assenta (zoom leve) e "Precisa vender mais." se revela por último */
+  :global(.slide.is-active) .cover__photo {
+    animation: cover-photo 1.2s var(--ease) both;
+  }
+
+  :global(.slide.is-active) .cover__highlight {
+    animation: pr-wipe-right var(--m-base) var(--ease) 0.75s both;
+  }
+
+  @keyframes cover-photo {
+    from {
+      opacity: 0;
+      transform: scale(1.06);
+    }
   }
 
   @media (max-width: 59.99rem), (max-aspect-ratio: 1/1) {

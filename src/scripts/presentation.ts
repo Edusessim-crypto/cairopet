@@ -2,11 +2,13 @@
  * Apresentação comercial (/apresentacao): um slide por tela.
  *
  * - Teclado: → ↓ PageDown Espaço (próximo) · ← ↑ PageUp Shift+Espaço (anterior)
- *   · Home/End · F (tela cheia) · 1–9 marcam o diagnóstico.
+ *   · Home/End · F (tela cheia).
  * - Roda/trackpad: uma troca por gesto (a inércia do trackpad não pula slides).
  * - Celular: swipe para os lados.
  * - URL: ?slide=N (replaceState, sem recarregar).
  * O slide inicial já vem ativo do script inline do Deck (sem piscar o 1º).
+ * Números com [data-count] animam de data-count-from (padrão 0) até o valor sempre que
+ * o slide entra (data-count-delay, em ms, adia o início para casar com a animação do slide).
  */
 
 const IDLE_MS = 2600; // desktop: controles somem depois disso sem mexer o mouse
@@ -15,6 +17,8 @@ const WHEEL_MIN_MS = 450; // intervalo mínimo entre trocas pela roda (≈ dura�
 const WHEEL_THRESHOLD = 24;
 const SWIPE_MIN_PX = 48;
 const SWIPE_MAX_MS = 900;
+const COUNT_MS = 1100;
+const COUNT_DELAY_MS = 250;
 
 type FsDocument = Document & {
   webkitFullscreenElement?: Element | null;
@@ -24,6 +28,48 @@ type FsDocument = Document & {
 type FsElement = HTMLElement & { webkitRequestFullscreen?: () => Promise<void> | void };
 
 const pad = (n: number) => String(n).padStart(2, '0');
+const formatCount = (n: number) => Math.round(n).toLocaleString('pt-BR');
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+
+let stopCount: (() => void) | null = null;
+
+/** Conta os [data-count] do slide; o HTML já traz o valor final (sem JS, leitor de tela). */
+function countUp(slide: HTMLElement) {
+  stopCount?.();
+  const items = [...slide.querySelectorAll<HTMLElement>('[data-count]')].map((el) => ({
+    el,
+    from: Number(el.dataset.countFrom ?? 0),
+    to: Number(el.dataset.count),
+    delay: Number(el.dataset.countDelay ?? COUNT_DELAY_MS),
+  }));
+  if (!items.length) return;
+
+  const finish = () => {
+    for (const { el, to } of items) el.textContent = formatCount(to);
+  };
+  if (reducedMotion.matches) return finish();
+
+  for (const { el, from } of items) el.textContent = formatCount(from);
+  const start = performance.now();
+  let raf = 0;
+  const tick = (now: number) => {
+    let running = false;
+    for (const { el, from, to, delay } of items) {
+      const t = Math.min(Math.max((now - start - delay) / COUNT_MS, 0), 1);
+      if (t < 1) running = true;
+      el.textContent = formatCount(from + (to - from) * (1 - (1 - t) ** 3));
+    }
+    if (running) raf = requestAnimationFrame(tick);
+    else stopCount = null;
+  };
+  raf = requestAnimationFrame(tick);
+
+  stopCount = () => {
+    cancelAnimationFrame(raf);
+    finish();
+    stopCount = null;
+  };
+}
 
 export function initPresentation() {
   const deck = document.querySelector<HTMLElement>('[data-deck]');
@@ -93,6 +139,7 @@ export function initPresentation() {
     next.classList.add('is-active');
     index = target;
     render(true);
+    countUp(next);
     syncScrollable();
 
     if (hadFocus) next.focus({ preventScroll: true });
@@ -138,7 +185,6 @@ export function initPresentation() {
         toggleFullscreen();
         break;
       default:
-        if (/^[1-9]$/.test(e.key) && toggleDiagnosis(Number(e.key))) break;
         return;
     }
     e.preventDefault();
@@ -274,16 +320,6 @@ export function initPresentation() {
     document.addEventListener('webkitfullscreenchange', syncFullscreen);
   }
 
-  // Diagnóstico: teclas 1–9 marcam a linha com aquele número --------------------------
-  function toggleDiagnosis(n: number) {
-    if (slides[index].dataset.slide !== 'diagnostico') return false;
-    const box = slides[index].querySelector<HTMLInputElement>(`[data-diagnosis="${n}"]`);
-    if (!box) return false;
-    box.checked = !box.checked;
-    box.dispatchEvent(new Event('change', { bubbles: true }));
-    return true;
-  }
-
   // Planos: seletor no celular e "Ver tudo o que está incluso" -----------------------------
   const plans = deck.querySelector<HTMLElement>('[data-plans]');
   const tabs = [...deck.querySelectorAll<HTMLButtonElement>('[data-plan-tab]')];
@@ -313,4 +349,5 @@ export function initPresentation() {
   // Fontes e fotos mudam a altura do conteúdo depois do primeiro cálculo
   document.fonts?.ready.then(syncScrollable);
   addEventListener('load', syncScrollable);
+  countUp(slides[index]);
 }

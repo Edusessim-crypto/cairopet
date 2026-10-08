@@ -1,0 +1,321 @@
+---
+/**
+ * Um plano por slide, sem preço: a promessa para a loja, para quem é, 4 destaques e
+ * onde ele está na evolução Presença → Crescimento → Performance.
+ * A lista completa fica no diálogo "Ver tudo o que está incluso" (slide de investimento).
+ */
+import Slide from '../Slide.astro';
+import { PLANS, type SlideId } from '../../../data/presentation';
+
+interface Props {
+  planId: string;
+}
+
+const plans = PLANS.plans;
+const level = plans.findIndex((p) => p.id === Astro.props.planId);
+const plan = plans[level];
+const previous = plans.find((p) => p.id === plan.extends);
+const highlighted = new Set(plan.highlights.map((h) => h.pillar));
+const extras = plan.pillars.filter((p) => !highlighted.has(p.key));
+const [fitLead, ...fitRest] = plan.fit.split(': ');
+const pad = (n: number) => String(n).padStart(2, '0');
+
+// Destaques entram depois da régua; a contagem (4 → 6) começa junto com o destaque
+const HL_DELAY_MS = 750;
+const HL_STEP_MS = 100;
+---
+
+<Slide id={`plano-${plan.id}` as SlideId} theme={plan.badge ? 'light' : 'dark'}>
+  <div class="po">
+    <div class="po__main">
+      <div class="po__intro">
+        <p class="po__kicker" data-reveal>
+          <span class="pr-mono">Plano {pad(level + 1)}/{pad(plans.length)}</span>
+          {plan.badge && <span class="pr-mono po__badge">{plan.badge}</span>}
+        </p>
+        <h2 class="po__name" data-reveal="title">{plan.name}</h2>
+        <p class="pr-lead po__promise" data-reveal>{plan.promise}</p>
+        <p class="po__fit" data-reveal>
+          <strong>{fitLead}:</strong>
+          {fitRest.join(': ')}
+        </p>
+      </div>
+
+      <ol class="po__path pr-mono" aria-label="Evolução dos planos" style={`--n:${level + 1}`} data-reveal>
+        {
+          plans.map((p, i) => (
+            <li class:list={{ 'is-in': i <= level }} style={`--k:${i}`} aria-current={i === level ? 'step' : undefined}>
+              {p.name}
+            </li>
+          ))
+        }
+      </ol>
+    </div>
+
+    <div class="po__side">
+      {previous && <p class="pr-mono po__extends" data-reveal>Tudo do {previous.name}, mais:</p>}
+
+      <dl class="po__grid">
+        {
+          plan.highlights.map((h, k) => (
+            <div class="po__hl" style={`--k:${k}`}>
+              <dt class="po__value">
+                {h.from === undefined ? (
+                  h.value
+                ) : (
+                  <span data-count={Number(h.value)} data-count-from={h.from} data-count-delay={HL_DELAY_MS + k * HL_STEP_MS}>{h.value}</span>
+                )}
+              </dt>
+              <dd class="po__label">{h.label}</dd>
+            </div>
+          ))
+        }
+      </dl>
+
+      <div class="po__more" data-reveal>
+        <p class="pr-mono">Também inclui:</p>
+        <ul>
+          {
+            extras.map((p) => (
+              <li>
+                {p.title}
+                {p.short && <span> · {p.short}</span>}
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+    </div>
+  </div>
+</Slide>
+
+<style>
+  .po {
+    display: grid;
+    gap: clamp(1.75rem, 5dvh, 2.5rem);
+  }
+
+  .po__main,
+  .po__side {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .po__main {
+    container-type: inline-size;
+  }
+
+  .po__kicker {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1rem;
+    color: var(--c-fg-2);
+  }
+
+  .po__badge {
+    padding: 0.45em 0.8em 0.4em;
+    border-radius: 4px;
+    background: var(--c-fg);
+    color: var(--c-bg);
+    font-weight: 700;
+    letter-spacing: 0.12em;
+  }
+
+  .po__name {
+    margin-top: 0.3em;
+    font-family: var(--font-display), 'Arial Black', sans-serif;
+    font-size: min(calc(var(--fs-display) * 0.9), 11.5cqi);
+    font-weight: 400;
+    line-height: 0.95;
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
+  }
+
+  .po__promise {
+    max-width: 22em;
+    margin-top: 0.8em;
+    color: var(--c-fg);
+  }
+
+  .po__fit {
+    max-width: 30em;
+    margin-top: 0.9em;
+    color: var(--c-fg-2);
+    font-size: var(--fs-small);
+    line-height: 1.5;
+  }
+
+  .po__fit strong {
+    color: var(--c-fg);
+    font-weight: 700;
+  }
+
+  /* Régua de evolução: três segmentos, preenchidos até o plano atual */
+  .po__path {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.4rem;
+    margin-top: clamp(1.5rem, 4dvh, 2.5rem);
+    color: var(--c-em);
+    font-size: max(0.625rem, calc(var(--fs-mono) * 0.95));
+    letter-spacing: 0.1em;
+  }
+
+  .po__path li {
+    position: relative;
+    padding-top: 0.9em;
+  }
+
+  .po__path li::before,
+  .po__path li.is-in::after {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto;
+    height: 3px;
+    background: var(--c-rule);
+  }
+
+  .po__path li.is-in {
+    color: var(--c-fg);
+  }
+
+  .po__path li.is-in::after {
+    background: var(--c-fg);
+    transform-origin: left center;
+  }
+
+  .po__path [aria-current] {
+    font-weight: 700;
+  }
+
+  .po__extends {
+    margin-bottom: 0.9em;
+    color: var(--c-fg);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+  }
+
+  /* 2×2 sem caixas: só linhas finas. Valores medidos pela grade inteira (mesmo tamanho nos 4) */
+  .po__grid {
+    container-type: inline-size;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .po__hl {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45em;
+    padding-block: clamp(0.9rem, 2.4dvh, 1.5rem);
+    padding-right: 0.75rem;
+    border-top: 1px solid var(--c-rule);
+  }
+
+  .po__hl:nth-child(2n) {
+    padding-left: 1rem;
+    border-left: 1px solid var(--c-rule);
+  }
+
+  .po__value {
+    font-family: var(--font-display), 'Arial Black', sans-serif;
+    font-size: min(calc(var(--fs-stat) * 0.7), 8.4cqi);
+    font-variant-numeric: tabular-nums;
+    line-height: 0.95;
+    letter-spacing: -0.04em;
+    white-space: nowrap;
+  }
+
+  .po__label {
+    max-width: 16em;
+    margin: 0;
+    color: var(--c-fg-2);
+    font-size: var(--fs-small);
+    line-height: 1.4;
+    text-wrap: pretty;
+  }
+
+  .po__more {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75em;
+    padding-top: clamp(0.9rem, 2.4dvh, 1.5rem);
+    border-top: 1px solid var(--c-rule);
+  }
+
+  .po__more p {
+    color: var(--c-fg-2);
+  }
+
+  .po__more ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+  }
+
+  .po__more li {
+    padding: 0.4em 0.85em 0.38em;
+    border: 1px solid var(--c-rule);
+    border-radius: 999px;
+    color: var(--c-fg);
+    font-size: calc(var(--fs-small) * 0.92);
+    line-height: 1.3;
+  }
+
+  .po__more li span {
+    color: var(--c-fg-2);
+  }
+
+  /* Momento: a régua preenche até o plano atual; depois os destaques entram */
+  :global(.slide.is-active) .po__path li.is-in::after {
+    --seg: calc(var(--m-base) / var(--n));
+    animation: pr-grow-x var(--seg) linear calc(0.25s + var(--k) * var(--seg)) both;
+  }
+
+  /* Segmentos em ritmo constante; o do plano atual desacelera ao chegar */
+  :global(.slide.is-active) .po__path li[aria-current]::after {
+    animation-timing-function: var(--ease);
+  }
+
+  :global(.slide.is-active) .po__hl {
+    animation: pr-rise 0.5s var(--ease) calc(0.75s + var(--k) * 0.1s) both;
+  }
+
+  :global(.slide.is-active) .po__more {
+    transition-delay: 1.1s;
+  }
+
+  @media (min-width: 60rem) and (min-aspect-ratio: 1/1) {
+    .po {
+      flex: 1;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+      column-gap: calc(var(--gap) * 2.2);
+      min-height: 0;
+    }
+
+    .po__intro {
+      margin-block: auto;
+    }
+
+    .po__path {
+      max-width: 30em;
+    }
+
+    .po__side {
+      justify-content: center;
+    }
+
+    .po__hl {
+      padding-block: calc(var(--u) * 1.5) calc(var(--u) * 1.9);
+    }
+
+    .po__hl:nth-child(2n) {
+      padding-left: calc(var(--gap) * 1.1);
+    }
+
+    .po__more {
+      padding-top: calc(var(--u) * 1.5);
+    }
+  }
+</style>
