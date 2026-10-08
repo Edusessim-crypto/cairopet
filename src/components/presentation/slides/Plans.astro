@@ -46,7 +46,7 @@ const PRICE_DELAY_MS = 800;
               <span class="pl__value" data-count={toNumber(plan.price)} data-count-delay={PRICE_DELAY_MS}>{plan.price}</span>
               <span class="pl__period">{plan.period}</span>
             </p>
-            <p class="pr-pill pl__day">menos de R$ {Math.ceil(toNumber(plan.price) / 30)} por dia</p>
+            <p class="pl__day">menos de R$ {Math.ceil(toNumber(plan.price) / 30)} por dia</p>
             <p class="pl__text">{plan.text}</p>
           </header>
 
@@ -197,9 +197,13 @@ const PRICE_DELAY_MS = 800;
   .pl__day {
     align-self: flex-start;
     margin-top: 0.9em;
-    padding: 0.5em 0.9em 0.45em;
-    font-size: max(0.625rem, calc(var(--fs-mono) * 0.92));
-    letter-spacing: 0.1em;
+    padding: 0.3em 0.8em;
+    border: 1px solid var(--c-rule);
+    border-radius: 999px;
+    color: var(--c-fg);
+    font-size: var(--fs-small);
+    font-weight: 600;
+    line-height: 1.3;
   }
 
   .pl__cur {
@@ -382,7 +386,7 @@ const PRICE_DELAY_MS = 800;
     }
 
     .pl__more {
-      min-height: 2.25rem;
+      min-height: 2rem;
       padding-top: clamp(0.4rem, 1.2dvh, 1.1em);
     }
 

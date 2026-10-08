@@ -45,20 +45,25 @@ const COL_STEP_MS = 120;
             <ul class="mk__bar">
               {col.monthly.map((block, b) => (
                 <li class="mk__block" style={`--v:${block.value};--b:${b}`}>
-                  <span class="mk__bname">{block.name}</span>
-                  <span class="mk__bval">R$ {brl(block.value)}</span>
+                  <span class="mk__blabel">
+                    <span class="mk__bname">{block.name}</span>
+                    <span class="mk__bval">R$ {brl(block.value)}</span>
+                  </span>
                 </li>
               ))}
             </ul>
           </div>
           <figcaption class="mk__caption">
             <span class="mk__name">{col.name}</span>
-            <span class="pr-mono mk__year">
-              1º ano: R$ <span data-count={col.year} data-count-delay={COL_DELAY_MS + c * COL_STEP_MS}>{brl(col.year)}</span>
+            <span class="mk__year">
+              <span class="pr-mono">No 1º ano</span>
+              <span class="mk__yval">
+                R$ <span data-count={col.year} data-count-delay={COL_DELAY_MS + c * COL_STEP_MS}>{brl(col.year)}</span>
+              </span>
             </span>
           </figcaption>
           {col.once && (
-            <p class="pr-mono mk__once">
+            <p class="mk__once">
               + R$ {brl(col.once.value)} · {col.once.name}, pagamento único
             </p>
           )}
@@ -151,7 +156,7 @@ const COL_STEP_MS = 120;
   .mk__per {
     color: var(--c-fg-2);
     font-family: var(--font-body), system-ui, sans-serif;
-    font-size: 0.55em;
+    font-size: max(0.55em, var(--fs-small));
     font-weight: 500;
     letter-spacing: 0;
   }
@@ -165,22 +170,16 @@ const COL_STEP_MS = 120;
     gap: 2px;
     width: var(--bar-w);
     height: var(--bar);
-    overflow: hidden;
-    border-radius: 6px 6px 0 0;
   }
 
+  /* Bloco = container de tamanho: se o rótulo não couber na altura, ele sai para o lado */
   .mk__block {
+    container-type: size;
     position: relative;
-    display: flex;
     flex: var(--v) 1 0;
-    flex-wrap: wrap;
-    align-content: flex-start;
-    justify-content: space-between;
-    gap: 0 0.5em;
     min-height: 0;
-    padding: 0.45em 0.6em;
     color: var(--mk-ink);
-    font-size: 0.75rem;
+    font-size: var(--fs-small);
     line-height: 1.25;
   }
 
@@ -192,8 +191,17 @@ const COL_STEP_MS = 120;
     transform-origin: bottom;
   }
 
-  .mk__block span {
+  .mk__block:last-child::before {
+    border-radius: 6px 6px 0 0;
+  }
+
+  .mk__blabel {
     position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0 0.5em;
+    padding: 0.45em 0.6em;
   }
 
   .mk__bname {
@@ -209,20 +217,21 @@ const COL_STEP_MS = 120;
   .mk__once {
     margin-top: 0.75rem;
     color: var(--c-fg-2);
-    font-size: max(0.625rem, calc(var(--fs-mono) * 0.92));
-    letter-spacing: 0.08em;
-    line-height: 1.5;
+    font-size: var(--fs-small);
+    line-height: 1.4;
+    text-wrap: pretty;
   }
 
   .mk__caption {
     display: flex;
     flex-direction: column;
-    gap: 0.3em;
+    gap: 0.45em;
     padding-top: 0.65rem;
     border-top: 1px solid var(--c-rule);
   }
 
-  .mk__name {
+  .mk__name,
+  .mk__yval {
     font-family: var(--font-display), 'Arial Black', sans-serif;
     font-size: clamp(0.875rem, 3.9vw, 1.0625rem);
     line-height: 1.1;
@@ -230,9 +239,18 @@ const COL_STEP_MS = 120;
   }
 
   .mk__year {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25em;
+  }
+
+  .mk__year .pr-mono {
     color: var(--c-fg-2);
+  }
+
+  .mk__yval {
     font-variant-numeric: tabular-nums;
-    letter-spacing: 0.06em;
+    white-space: nowrap;
   }
 
   .mk__foot {
@@ -248,7 +266,7 @@ const COL_STEP_MS = 120;
 
   .mk__note {
     color: var(--c-fg-2);
-    font-size: calc(var(--fs-small) * 0.88);
+    font-size: var(--fs-small);
     line-height: 1.45;
     text-wrap: pretty;
   }
@@ -270,7 +288,7 @@ const COL_STEP_MS = 120;
     animation: pr-grow-y 0.45s var(--ease) calc(0.3s + var(--c) * 0.12s + var(--b) * 0.32s) both;
   }
 
-  :global(.slide.is-active) .mk__block span {
+  :global(.slide.is-active) .mk__blabel {
     animation: pr-fade var(--m-fast) var(--ease) calc(0.55s + var(--c) * 0.12s + var(--b) * 0.32s) both;
   }
 
@@ -333,9 +351,33 @@ const COL_STEP_MS = 120;
       font-size: var(--fs-h2);
     }
 
-    .mk__block {
+    .mk__blabel {
       padding: 0.5em 0.7em;
-      font-size: calc(var(--fs-small) * 0.88);
+    }
+
+    /* Bloco baixo demais para nome + valor: rótulo ao lado da barra, ligado por uma linha fina */
+    @container (height < 2.3em) {
+      .mk__blabel {
+        position: absolute;
+        top: 50%;
+        left: calc(100% + 1.75rem);
+        flex-direction: column;
+        width: max-content;
+        max-width: 11em;
+        padding: 0;
+        color: var(--c-fg);
+        transform: translateY(-50%);
+      }
+
+      .mk__blabel::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        right: calc(100% + 0.4rem);
+        width: 1.35rem;
+        height: 1px;
+        background: var(--c-fg-2);
+      }
     }
 
     /* Legenda da coluna com altura fixa: assim o selo (posicionado na coluna) sabe onde
@@ -346,13 +388,24 @@ const COL_STEP_MS = 120;
       position: relative;
     }
 
+    /* Nome do plano à esquerda; "No 1º ano" + valor à direita, na mesma linha de base */
     .mk__caption {
+      flex-direction: row;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 1rem;
       height: var(--cap);
       padding-top: calc(var(--u) * 0.9);
     }
 
-    .mk__name {
+    .mk__name,
+    .mk__yval {
       font-size: var(--fs-h3);
+    }
+
+    .mk__year {
+      align-items: flex-end;
+      text-align: right;
     }
 
     .mk__once {

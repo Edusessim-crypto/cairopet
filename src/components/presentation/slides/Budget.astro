@@ -39,7 +39,7 @@ import { BUDGET } from '../../../data/presentation';
 
     <p class="bg__dest">{BUDGET.result}</p>
 
-    <p class="pr-mono bg__seal" data-reveal>{BUDGET.seal}</p>
+    <p class="bg__seal" data-reveal>{BUDGET.seal}</p>
   </div>
 
   <p class="pr-statement bg__statement" data-reveal>
@@ -119,17 +119,20 @@ import { BUDGET } from '../../../data/presentation';
     text-wrap: balance;
   }
 
+  /* Argumento de venda: legível em compartilhamento de tela (Inter, nunca abaixo de --fs-small) */
   .bg__seal {
     grid-column: 1 / -1;
     justify-self: start;
-    max-width: 30em;
+    max-width: 24em;
     margin-top: 1.25rem;
-    padding: 0.75em 1em 0.7em;
+    padding: 0.7em 0.95em;
     border: 1px solid var(--c-rule);
     border-radius: 6px;
-    color: var(--c-fg-2);
-    letter-spacing: 0.1em;
-    line-height: 1.55;
+    color: var(--c-fg);
+    font-size: var(--fs-small);
+    font-weight: 600;
+    line-height: 1.45;
+    text-wrap: pretty;
   }
 
   .bg__statement {
